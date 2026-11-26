@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+
+# Build output
+backend/dist/
+
+# Environment variables (không đẩy lên Git)
+.env
+backend/.env
+
+# Uploaded user files (tùy chọn giữ thư mục rỗng)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Logs & OS files
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.vscode/

@@ -1,0 +1,233 @@
+/* Tùy chỉnh bổ sung cho Website Tìm Trọ Sinh Viên */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --secondary: #0ea5e9;
+  --accent: #f59e0b;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+/* Card hover animation */
+.room-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.room-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px -8px rgba(37, 99, 235, 0.12), 0 8px 16px -8px rgba(0, 0, 0, 0.06);
+}
+
+/* Map marker popups */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.5;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Badge pulse animation for HOT rooms */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.04); }
+}
+
+.badge-hot {
+  animation: pulse-subtle 2s infinite ease-in-out;
+}
+
+/* Modal animation */
+.modal-overlay {
+  transition: opacity 0.25s ease;
+}
+
+.modal-content {
+  transition: transform 0.25s ease;
+}
+
+/* University Marker pin */
+.uni-marker-icon {
+  background-color: #ef4444;
+  color: white;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.room-marker-icon {
+  background-color: #2563eb;
+  color: white;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+/* =====================================================================
+   CHẾ ĐỘ NỀN TỐI (DARK MODE) CHO SVTRỌ ĐÀ NẴNG
+   ===================================================================== */
+body.dark-mode {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode header,
+body.dark-mode footer {
+  background-color: rgba(15, 23, 42, 0.94) !important;
+  border-color: #1e293b !important;
+}
+
+body.dark-mode .bg-white {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode .bg-slate-50,
+body.dark-mode .bg-gray-50 {
+  background-color: #0f172a !important;
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .bg-slate-100 {
+  background-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-mode .bg-blue-50,
+body.dark-mode .bg-emerald-50,
+body.dark-mode .bg-amber-50,
+body.dark-mode .bg-rose-50,
+body.dark-mode .bg-indigo-50 {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .border-slate-100,
+body.dark-mode .border-slate-200,
+body.dark-mode .border-gray-100,
+body.dark-mode .border-gray-200 {
+  border-color: #334155 !important;
+}
+
+body.dark-mode .text-slate-900,
+body.dark-mode .text-gray-900,
+body.dark-mode .text-slate-800,
+body.dark-mode .text-gray-800 {
+  color: #f8fafc !important;
+}
+
+body.dark-mode .text-slate-700,
+body.dark-mode .text-gray-700,
+body.dark-mode .text-slate-600,
+body.dark-mode .text-gray-600 {
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .text-slate-500,
+body.dark-mode .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+
+body.dark-mode .leaflet-popup-content-wrapper,
+body.dark-mode .leaflet-popup-tip {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+/* Hiệu ứng trượt Menu Tổng Hợp */
+#main-menu-drawer {
+  transition: transform 0.25s ease-in-out;
+}
+
+/* Chuông Thông Báo (Sáng: nền trắng — Tối: nền đen/tối) */
+#notif-dropdown {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+#notif-dropdown .notif-item {
+  background-color: #ffffff;
+}
+
+#notif-dropdown .notif-item.notif-unread {
+  background-color: #eff6ff;
+}
+
+#notif-dropdown .notif-item:hover {
+  background-color: #f1f5f9;
+}
+
+body.dark-mode #notif-dropdown {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode #notif-dropdown .notif-item {
+  background-color: #0f172a !important;
+}
+
+body.dark-mode #notif-dropdown .notif-item.notif-unread {
+  background-color: #1e293b !important;
+}
+
+body.dark-mode #notif-dropdown .notif-item:hover {
+  background-color: #334155 !important;
+}
+
+body.dark-mode .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1e293b !important;
+}
+
+body.dark-mode .hover\:bg-slate-100:hover,
+body.dark-mode .hover\:bg-blue-50:hover,
+body.dark-mode .hover\:bg-white:hover {
+  background-color: #334155 !important;
+  color: #f8fafc !important;
+}

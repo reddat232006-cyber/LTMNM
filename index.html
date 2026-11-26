@@ -1,0 +1,2033 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVTrọ Đà Nẵng - Cổng Tìm Kiếm Phòng Trọ Sinh Viên Thông Minh</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Leaflet CSS (Bản đồ mã nguồn mở OpenStreetMap) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <!-- File CSS tùy chỉnh của dự án -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- 1. HEADER / THANH ĐIỀU HƯỚNG -->
+  <header class="bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <!-- Nút Menu Tổng Hợp + Logo -->
+      <div class="flex items-center gap-2.5">
+        <button onclick="toggleMainMenu()" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-700 flex items-center justify-center transition shadow-sm border border-slate-200" title="Mở Menu Tổng Hợp">
+          <i class="fa-solid fa-bars text-base"></i>
+        </button>
+        <a href="#" class="flex items-center gap-2.5 text-blue-600 font-extrabold text-xl tracking-tight">
+          <div class="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-500 text-white rounded-xl flex items-center justify-center shadow-md shadow-blue-500/20 text-lg">
+            <i class="fa-solid fa-graduation-cap"></i>
+          </div>
+          <div class="flex flex-col">
+            <span class="leading-none">SV<span class="text-indigo-600">Trọ</span></span>
+            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Đà Nẵng City</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- Quick Badges & Actions -->
+      <div class="flex items-center gap-2.5">
+        <!-- Badge trạng thái kết nối Backend NestJS -->
+        <span id="backend-status-pill" class="hidden lg:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+          <span class="w-2 h-2 rounded-full bg-slate-400" id="backend-status-dot"></span>
+          <span id="backend-status-text">Đang kiểm tra Backend...</span>
+        </span>
+
+        <!-- Nút chuyển Sáng/Tối nhanh -->
+        <button onclick="toggleDarkMode()" id="header-theme-btn" class="p-2 text-slate-600 hover:text-amber-500 transition rounded-xl hover:bg-slate-100" title="Chuyển nền Sáng / Tối">
+          <i class="fa-solid fa-moon text-base"></i>
+        </button>
+
+        <button onclick="openGroupPage()" class="hidden lg:inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition">
+          <i class="fa-solid fa-users text-blue-600"></i> <span>Group Tìm Phòng</span>
+        </button>
+
+        <button onclick="document.getElementById('blog-section').scrollIntoView({behavior: 'smooth'})" class="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 transition">
+          <i class="fa-solid fa-newspaper text-indigo-600"></i> <span data-i18n="nav_blog">Blog</span>
+        </button>
+
+        <!-- Nút Yêu thích (Bấm để mở Trang Phòng Yêu Thích Đã Lưu) -->
+        <button id="fav-filter-btn" onclick="openFavoritesPage()" class="relative p-2 text-slate-600 hover:text-red-500 transition rounded-xl hover:bg-slate-100" title="Mở Trang phòng đã lưu (Yêu thích)">
+          <i class="fa-solid fa-heart text-lg"></i>
+          <span id="fav-count-badge" style="display: none;" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[11px] font-bold rounded-full items-center justify-center">0</span>
+        </button>
+
+        <!-- Nút Trang quản lý riêng cho Chủ trọ / Admin -->
+        <button id="btn-my-landlord-page" onclick="openDashboardModal('myrooms')" class="hidden inline-flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs sm:text-sm font-bold px-3 py-2 rounded-xl shadow-xs transition active:scale-95" title="Trang quản lý phòng riêng của bạn">
+          <i class="fa-solid fa-house-user text-amber-600"></i>
+          <span class="hidden sm:inline" id="btn-my-landlord-page-text">Phòng của tôi</span>
+        </button>
+
+        <!-- Nút Đăng tin trọ mới (CHỈ Chủ trọ & Admin mới thấy và sử dụng) -->
+        <button id="btn-add-room" onclick="handleAddRoomClick()" class="hidden inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold px-3.5 py-2 rounded-xl shadow-md shadow-blue-500/20 transition active:scale-95">
+          <i class="fa-solid fa-plus"></i>
+          <span class="hidden sm:inline" data-i18n="nav_post">Đăng tin</span>
+        </button>
+
+        <!-- Khu vực Tài khoản & Phân quyền -->
+        <div id="auth-header-area" class="flex items-center gap-2">
+          <button onclick="openAuthModal('login')" class="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold px-3.5 py-2 rounded-xl shadow transition">
+            <i class="fa-solid fa-user-shield"></i>
+            <span data-i18n="nav_login">Đăng nhập</span>
+          </button>
+        </div>
+
+        <!-- Chuông Thông Báo (Đặt bên phải ảnh đại diện tài khoản) -->
+        <div class="relative" id="notif-bell-wrapper">
+          <button id="notif-bell-btn" onclick="toggleNotifDropdown(event)" class="relative p-2 text-slate-600 hover:text-amber-500 transition rounded-xl hover:bg-slate-100" title="Thông báo chưa xem">
+            <i class="fa-solid fa-bell text-lg"></i>
+            <span id="notif-unread-badge" style="display: none;" class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-rose-600 text-white text-[10px] font-extrabold rounded-full items-center justify-center shadow">0</span>
+          </button>
+
+          <!-- Hộp thả xuống Thông báo -->
+          <div id="notif-dropdown" class="hidden absolute right-0 mt-2.5 w-80 sm:w-96 max-w-[92vw] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50 text-xs">
+            <div class="p-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
+              <div class="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+                <i class="fa-solid fa-bell text-amber-500"></i> Thông báo
+                <span id="notif-header-count" class="px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-extrabold">0 mới</span>
+              </div>
+              <button onclick="markAllNotifsRead()" class="text-[11px] font-bold text-blue-600 hover:underline">
+                ✓ Đã đọc tất cả
+              </button>
+            </div>
+
+            <div class="px-3 pt-2 pb-1.5 border-b border-slate-100 flex items-center gap-1.5 text-[11px] font-bold">
+              <button onclick="setNotifFilter('unread', this)" class="notif-filter-btn px-2.5 py-1 rounded-lg bg-blue-600 text-white transition">Chưa xem</button>
+              <button onclick="setNotifFilter('all', this)" class="notif-filter-btn px-2.5 py-1 rounded-lg text-slate-600 hover:bg-slate-100 transition">Tất cả</button>
+            </div>
+
+            <div id="notif-list-body" class="max-h-[60vh] overflow-y-auto divide-y divide-slate-100">
+              <div class="py-8 text-center text-slate-400">Đang kiểm tra thông báo...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 2. HERO SEARCH BANNER (ĐÀ NẴNG) -->
+  <section class="bg-gradient-to-b from-blue-600 via-blue-700 to-indigo-800 text-white pt-10 pb-16 px-4">
+    <div class="max-w-5xl mx-auto text-center">
+      <span id="time-greeting-badge" class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-white/15 backdrop-blur-sm text-blue-50 border border-white/25 mb-3 shadow-xs">
+        <i class="fa-solid fa-sun text-amber-300"></i> <span data-i18n="hero_badge">Hệ Thống Cập Nhật Phòng Trống Theo Thời Gian Thực</span>
+      </span>
+      <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-3" data-i18n="hero_title">
+        Tìm phòng trọ cho Sinh viên &amp; Người lao động Đà Nẵng
+      </h1>
+      <p class="text-sm sm:text-base text-blue-100 max-w-2xl mx-auto mb-8" data-i18n="hero_subtitle">
+        Kiểm tra trực tiếp phòng CÒN hay HẾT - Bách Khoa, Kinh Tế, Đông Á... &amp; KCN Hòa Khánh, KCN Hòa Cầm, An Đồn, Thọ Quang.
+      </p>
+
+      <!-- Khung tìm kiếm chính (Bộ lọc đa năng 6 cột cho Đà Nẵng) -->
+      <div class="bg-white rounded-2xl p-3 sm:p-4 shadow-xl shadow-blue-900/30 text-slate-800 text-left">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+          
+          <!-- 1. Từ khóa -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">
+              <i class="fa-solid fa-magnifying-glass text-blue-600 mr-1"></i> Từ khóa
+            </label>
+            <input type="text" id="search-keyword" placeholder="Studio, Xô Viết, KCN..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+          </div>
+
+          <!-- 2. Quận / Huyện Đà Nẵng -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">
+              <i class="fa-solid fa-map-location text-emerald-600 mr-1"></i> Khu vực
+            </label>
+            <select id="select-district" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition font-medium">
+              <!-- Render bởi JS -->
+            </select>
+          </div>
+
+          <!-- 3. Trường đại học & Khu Công Nghiệp Đà Nẵng -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">
+              <i class="fa-solid fa-graduation-cap text-indigo-600 mr-1"></i> Gần ĐH / KCN
+            </label>
+            <select id="select-university" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition font-medium">
+              <!-- Render bởi JS -->
+            </select>
+          </div>
+
+          <!-- 4. Khoảng giá chi tiết sinh viên ĐN -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">
+              <i class="fa-solid fa-money-bill-wave text-amber-600 mr-1"></i> Mức giá
+            </label>
+            <select id="select-price" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition font-medium">
+              <option value="all">Tất cả mức giá</option>
+              <option value="under-1m">Dưới 1.0 triệu (KTX/Ghép)</option>
+              <option value="1m-1.5m">1.0 - 1.5 triệu (Bình dân)</option>
+              <option value="1.5m-2m">1.5 - 2.0 triệu (Gác lửng)</option>
+              <option value="2m-2.5m">2.0 - 2.5 triệu (Gác đúc, AC)</option>
+              <option value="2.5m-3.5m">2.5 - 3.5 triệu (Studio giá tốt)</option>
+              <option value="3.5m-5m">3.5 - 5.0 triệu (Studio cao cấp)</option>
+              <option value="above-5m">Trên 5.0 triệu (Căn hộ 2PN)</option>
+            </select>
+          </div>
+
+          <!-- 5. Loại hình phòng -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">
+              <i class="fa-solid fa-building text-violet-600 mr-1"></i> Loại hình
+            </label>
+            <select id="select-type" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition font-medium">
+              <option value="all">Tất cả loại phòng</option>
+              <option value="studio">✨ Căn hộ Studio (Full đồ)</option>
+              <option value="phong-tro">Phòng trọ khép kín / Gác</option>
+              <option value="ccmn">Chung cư mini / 2PN</option>
+              <option value="ktx">Ký túc xá / Sleepbox</option>
+              <option value="o-ghep">Tìm ở ghép</option>
+            </select>
+          </div>
+
+          <!-- 6. TÌNH TRẠNG PHÒNG (MỚI: CÒN / HẾT PHÒNG) -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">
+              <i class="fa-solid fa-door-open text-emerald-600 mr-1"></i> Tình trạng
+            </label>
+            <select id="select-status" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition font-bold text-slate-800">
+              <option value="all">Tất cả tình trạng</option>
+              <option value="available" selected>🟢 Chỉ xem CÒN PHÒNG</option>
+              <option value="full">🔴 Phòng ĐÃ HẾT</option>
+              <option value="available-soon">🟡 Phòng SẮP TRỐNG</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Tiện ích (Checkboxes) -->
+        <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-600">
+          <span class="font-bold text-slate-700">Tiện ích:</span>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" value="may-lanh" class="filter-amenity accent-blue-600 rounded">
+            <span>Máy lạnh</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" value="gac-lung" class="filter-amenity accent-blue-600 rounded">
+            <span>Gác lửng đúc</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" value="ve-sinh-rieng" class="filter-amenity accent-blue-600 rounded">
+            <span>WC riêng</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" value="gio-tu-do" class="filter-amenity accent-blue-600 rounded">
+            <span>Giờ tự do</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" value="may-giat" class="filter-amenity accent-blue-600 rounded">
+            <span>Máy giặt</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" value="khoa-van-tay" class="filter-amenity accent-blue-600 rounded">
+            <span>Khóa vân tay 24/7</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" value="cho-de-xe" class="filter-amenity accent-blue-600 rounded">
+            <span>Chỗ để xe</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" value="wifi" class="filter-amenity accent-blue-600 rounded">
+            <span>Wifi</span>
+          </label>
+          
+          <button onclick="resetFilters()" class="ml-auto text-blue-600 hover:text-blue-800 font-semibold text-xs flex items-center gap-1">
+            <i class="fa-solid fa-rotate-left"></i> Đặt lại
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. NỘI DUNG CHÍNH (Bản đồ Đà Nẵng + Danh sách phòng) -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+    
+    <!-- Quick filter pills Đà Nẵng -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-3 mb-6 no-scrollbar">
+      <span class="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1">Lọc nhanh:</span>
+      <button class="quick-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-blue-600 text-white shadow-sm transition shrink-0" data-filter="all">Tất cả</button>
+      <button onclick="findRoomsNearMe()" class="px-3.5 py-1.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-300 hover:bg-rose-100 shadow-sm transition shrink-0 flex items-center gap-1">
+        <i class="fa-solid fa-location-crosshairs"></i> Quanh tôi (3km)
+      </button>
+      <button onclick="openRoommateModal()" class="px-3.5 py-1.5 rounded-full text-xs font-bold bg-violet-50 text-violet-700 border border-violet-300 hover:bg-violet-100 shadow-sm transition shrink-0 flex items-center gap-1">
+        🤝 Tìm ở ghép hợp gu
+      </button>
+      <button class="quick-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-50 shadow-sm transition shrink-0" data-filter="available">🟢 Đang CÒN PHÒNG</button>
+      <button class="quick-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-50 shadow-sm transition shrink-0" data-filter="worker">👷 Cho Người Lao Động</button>
+      <button class="quick-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white text-amber-700 border border-amber-300 hover:bg-amber-50 shadow-sm transition shrink-0" data-filter="kcn-hoa-khanh">🏭 KCN Hòa Khánh</button>
+      <button class="quick-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white text-amber-700 border border-amber-300 hover:bg-amber-50 shadow-sm transition shrink-0" data-filter="kcn-hoa-cam">🏭 KCN Hòa Cầm</button>
+      <button class="quick-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 shadow-sm transition shrink-0" data-filter="studio">✨ Căn hộ Studio</button>
+      <button class="quick-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 shadow-sm transition shrink-0" data-filter="uda">Gần ĐH Đông Á</button>
+      <button class="quick-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 shadow-sm transition shrink-0" data-filter="dut">Gần Bách Khoa</button>
+      <button class="quick-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white text-rose-700 border border-rose-200 hover:bg-rose-50 shadow-sm transition shrink-0" data-filter="full">🔴 Đã hết phòng</button>
+    </div>
+
+    <!-- Danh sách phòng trọ toàn màn hình (3 cột rộng rãi — Bản đồ nằm gọn bên trong từng bài đăng) -->
+    <div>
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h2 id="results-count" class="text-base sm:text-lg font-bold text-slate-800">
+          Đang tải dữ liệu Đà Nẵng...
+        </h2>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg font-semibold border border-emerald-200">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Còn phòng
+          </span>
+          <span class="inline-flex items-center gap-1 text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg font-semibold border border-rose-200">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Đã hết
+          </span>
+          <span class="hidden sm:inline-flex items-center gap-1 text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg font-semibold border border-blue-200">
+            <i class="fa-solid fa-map-location-dot"></i> Bấm "Chi tiết" để xem bản đồ vị trí từng phòng
+          </span>
+        </div>
+      </div>
+
+      <!-- Thanh phòng đã xem gần đây (hiện tự động khi đã xem ít nhất 1 phòng) -->
+      <div id="recent-rooms-bar" class="hidden mb-5 p-3 bg-white rounded-2xl border border-slate-200 shadow-xs">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <i class="fa-solid fa-clock-rotate-left text-blue-600"></i> Phòng bạn vừa xem gần đây
+          </span>
+          <button onclick="clearRecentRooms()" class="text-[11px] text-slate-400 hover:text-rose-500 font-semibold transition">Xóa lịch sử</button>
+        </div>
+        <div id="recent-rooms-list" class="flex items-center gap-2.5 overflow-x-auto pb-1 no-scrollbar"></div>
+      </div>
+
+      <!-- Grid phòng trọ toàn chiều rộng 3 cột -->
+      <div id="rooms-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Room cards will be inserted here -->
+      </div>
+    </div>
+
+    <!-- 3.4. BANNER DẪN VÀO TRANG GROUP CỘNG ĐỒNG TÌM PHÒNG (KIỂU FACEBOOK) -->
+    <section id="room-requests-section" class="mt-12">
+      <div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+        <div class="space-y-1.5">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/25 text-[11px] font-bold">
+            <i class="fa-solid fa-users"></i> Cộng Đồng Tìm Phòng Đà Nẵng • Hoạt động 24/7
+          </span>
+          <h2 class="text-xl sm:text-2xl font-extrabold">Group Đăng Tin Tìm Phòng &amp; Kết Nối Chủ Trọ</h2>
+          <p class="text-xs sm:text-sm text-blue-100 max-w-2xl">
+            Đăng bài tìm phòng theo yêu cầu giống như Group Facebook — các Chủ trọ có phòng phù hợp sẽ bình luận đề xuất phòng và liên hệ trực tiếp với bạn để ký hợp đồng.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+          <button onclick="openGroupPage()" class="px-5 py-3 bg-white hover:bg-blue-50 text-blue-700 font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg transition active:scale-95 flex items-center gap-2">
+            <i class="fa-solid fa-comments"></i> Vào Trang Group ngay
+          </button>
+          <button onclick="openGroupPage(); setTimeout(openAddRequestModal, 150)" class="px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg transition active:scale-95 flex items-center gap-1.5">
+            <i class="fa-solid fa-pen-to-square"></i> Đăng bài tìm phòng
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3.5. KHU VỰC BLOG & THÔNG BÁO CẬP NHẬT MỚI -->
+    <section id="blog-section" class="mt-14 pt-10 border-t border-slate-200">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <span class="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200 mb-1.5">
+            <i class="fa-solid fa-newspaper"></i> Blog &amp; Thông báo cập nhật
+          </span>
+          <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900">Tin tức, Cập nhật mới &amp; Kinh nghiệm thuê trọ</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Theo dõi các tính năng mới, cảnh báo lừa đảo và mẹo thuê trọ tiết kiệm tại Đà Nẵng.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 text-xs font-bold">
+            <button onclick="filterBlogPosts('all', this)" class="blog-cat-btn px-2.5 py-1.5 rounded-lg bg-blue-600 text-white transition">Tất cả</button>
+            <button onclick="filterBlogPosts('cap-nhat', this)" class="blog-cat-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">📢 Cập nhật</button>
+            <button onclick="filterBlogPosts('canh-bao', this)" class="blog-cat-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">🚨 Cảnh báo</button>
+            <button onclick="filterBlogPosts('kinh-nghiem', this)" class="blog-cat-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition">💡 Kinh nghiệm</button>
+          </div>
+          <!-- Nút Viết bài Blog (Chỉ Admin thấy) -->
+          <button id="btn-add-blog" onclick="openAddBlogModal()" class="hidden inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow-md shadow-indigo-500/20 transition">
+            <i class="fa-solid fa-pen-nib"></i> Viết bài Blog
+          </button>
+        </div>
+      </div>
+
+      <!-- Grid bài viết Blog -->
+      <div id="blog-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="col-span-full py-10 text-center text-slate-400 text-xs">Đang tải danh sách bài viết Blog...</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 4. FOOTER -->
+  <footer class="bg-white border-t border-slate-200 py-8 text-xs text-slate-500 text-center mt-12">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex items-center justify-center gap-2 font-bold text-slate-800 text-sm mb-2">
+        <i class="fa-solid fa-graduation-cap text-blue-600"></i> SVTrọ Đà Nẵng - Mạng lưới phòng trọ sinh viên miền Trung
+      </div>
+      <p>Dự án mã nguồn mở hỗ trợ sinh viên tại TP. Đà Nẵng tìm kiếm phòng trọ an toàn, uy tín.</p>
+    </div>
+  </footer>
+
+  <!-- 5. MODAL: CHI TIẾT PHÒNG TRỌ -->
+  <div id="room-detail-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
+    <!-- Nút đóng X cố định bên phải màn hình, lướt xuống vẫn bấm tắt ngay không cần cuộn lên -->
+    <button onclick="closeModal('room-detail-modal')" class="fixed top-4 right-4 sm:top-6 sm:right-6 z-[70] w-11 h-11 rounded-full bg-slate-900/90 hover:bg-rose-600 text-white border-2 border-white/30 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95" title="Đóng cửa sổ (Esc)">
+      <i class="fa-solid fa-xmark text-lg"></i>
+    </button>
+    <div class="modal-content bg-white w-full max-w-2xl max-h-[90vh] rounded-3xl overflow-y-auto shadow-2xl relative">
+      <div id="modal-room-content">
+        <!-- Nội dung chi tiết phòng sẽ được JS chèn vào đây -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. MODAL: ĐĂNG TIN PHÒNG TRỌ ĐÀ NẴNG MỚI -->
+  <div id="add-room-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xl max-h-[90vh] rounded-3xl overflow-y-auto shadow-2xl p-6 relative">
+      <button onclick="closeModal('add-room-modal')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <h3 class="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
+        <i class="fa-solid fa-house-chimney text-blue-600"></i> Đăng tin phòng trọ / Studio tại Đà Nẵng
+      </h3>
+      <p class="text-xs text-slate-500 mb-4">Cập nhật thông tin phòng và tình trạng phòng trống hiện tại.</p>
+
+      <form id="add-room-form" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Tiêu đề bài đăng *</label>
+          <input type="text" id="room-title" required placeholder="VD: Căn hộ Studio Full đồ Xô Viết Nghệ Tĩnh gần ĐH Đông Á" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Giá thuê (VNĐ/tháng) *</label>
+            <input type="number" id="room-price" required placeholder="2500000" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Diện tích (m²) *</label>
+            <input type="number" id="room-area" required placeholder="25" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <!-- Tình trạng & Số phòng trống -->
+        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Tình trạng phòng *</label>
+            <select id="modal-room-status" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-bold">
+              <option value="available">🟢 Đang còn phòng</option>
+              <option value="full">🔴 Đã hết phòng</option>
+              <option value="available-soon">🟡 Sắp trống (tháng tới)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Số phòng trống</label>
+            <input type="number" id="modal-room-count" value="1" min="0" max="20" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Gần trường Đại Học *</label>
+            <select id="modal-room-uni" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <!-- JS điền -->
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Khoảng cách đến trường</label>
+            <input type="text" id="room-distance" placeholder="VD: 200m hoặc 3 phút đi bộ" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Loại hình</label>
+            <select id="room-type" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="studio">Căn hộ Studio (Full đồ)</option>
+              <option value="phong-tro">Phòng trọ khép kín / Gác</option>
+              <option value="ccmn">Chung cư mini / 2PN</option>
+              <option value="ktx">Ký túc xá / Sleepbox</option>
+              <option value="o-ghep">Tìm ở ghép</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Số điện thoại / Zalo *</label>
+            <input type="text" id="room-phone" required placeholder="0905.xxx.xxx" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Địa chỉ thực tế tại Đà Nẵng (Chuẩn Google Maps) *</label>
+          <input type="text" id="room-address" required placeholder="VD: Kiệt 48 Xô Viết Nghệ Tĩnh, Hòa Cường Nam, Hải Châu, Đà Nẵng" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <!-- Tiện nghi -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Tiện nghi sẵn có:</label>
+          <div class="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" value="may-lanh" class="add-amenity accent-blue-600 rounded"> Máy lạnh
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" value="gac-lung" class="add-amenity accent-blue-600 rounded"> Gác lửng đúc
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" value="ve-sinh-rieng" class="add-amenity accent-blue-600 rounded"> WC riêng
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" value="may-giat" class="add-amenity accent-blue-600 rounded"> Máy giặt
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" value="gio-tu-do" class="add-amenity accent-blue-600 rounded"> Giờ tự do
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" value="wifi" class="add-amenity accent-blue-600 rounded"> Wifi cáp quang
+            </label>
+          </div>
+        </div>
+
+        <!-- Upload ảnh phòng thật từ máy tính -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">
+            <i class="fa-solid fa-images text-blue-600 mr-1"></i> Tải ảnh phòng thực tế (Tối đa 5 ảnh, JPG/PNG)
+          </label>
+          <input type="file" id="room-images-input" multiple accept="image/*" onchange="previewRoomImages(event)" class="w-full bg-slate-50 border border-dashed border-slate-300 rounded-xl px-3 py-2 text-xs file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+          <div id="room-images-preview" class="grid grid-cols-5 gap-2 mt-2"></div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Mô tả thêm (Điện nước, an ninh...)</label>
+          <textarea id="room-desc" rows="3" placeholder="Chi phí điện 3.2k/kWh, nước 50k/người, không ngập nước..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+        </div>
+
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl transition shadow-md shadow-blue-500/20 text-sm">
+          Đăng tin ngay
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 7. MODAL: ĐẶT LỊCH XEM PHÒNG -->
+  <div id="appointment-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 relative">
+      <button onclick="closeModal('appointment-modal')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center gap-2.5 mb-2">
+        <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-calendar-check"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-900">Đặt lịch hẹn xem phòng</h3>
+          <p class="text-[11px] text-slate-500 line-clamp-1" id="appt-room-title-display">Đang tải...</p>
+        </div>
+      </div>
+
+      <form id="appointment-form" onsubmit="handleAppointmentSubmit(event)" class="space-y-3 mt-4 text-xs">
+        <input type="hidden" id="appt-room-id">
+        
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Họ và tên của bạn *</label>
+          <input type="text" id="appt-tenant-name" required placeholder="VD: Nguyễn Văn Nam" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Số điện thoại liên hệ *</label>
+          <input type="text" id="appt-tenant-phone" required placeholder="VD: 0905123456" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Ngày hẹn *</label>
+            <input type="date" id="appt-date" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Khung giờ *</label>
+            <select id="appt-time" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium">
+              <option value="08:30 - 09:30">08:30 - 09:30</option>
+              <option value="11:30 - 12:30">11:30 - 12:30 (Trưa)</option>
+              <option value="17:00 - 18:00" selected>17:00 - 18:00 (Tan ca/học)</option>
+              <option value="18:30 - 19:30">18:30 - 19:30 (Tối)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Ghi chú cho chủ trọ</label>
+          <textarea id="appt-note" rows="2" placeholder="VD: Em đi cùng bạn, đến đầu kiệt em sẽ gọi cô..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+        </div>
+
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition shadow-md shadow-emerald-600/20 text-xs flex items-center justify-center gap-1.5 mt-2">
+          <i class="fa-solid fa-paper-plane"></i> Gửi yêu cầu đặt lịch
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 8. MODAL: ĐÁNH GIÁ & BÁO CÁO LỪA ĐẢO -->
+  <div id="review-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 relative">
+      <button onclick="closeModal('review-modal')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center gap-2.5 mb-2">
+        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-900">Đánh giá & Báo cáo phòng trọ</h3>
+          <p class="text-[11px] text-slate-500 line-clamp-1" id="review-room-title-display">Đang tải...</p>
+        </div>
+      </div>
+
+      <form id="review-form" onsubmit="handleReviewSubmit(event)" class="space-y-3 mt-4 text-xs">
+        <input type="hidden" id="review-room-id">
+        
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Tên của bạn *</label>
+          <input type="text" id="review-author-name" required placeholder="VD: Sinh viên Bách Khoa / Anh Tuấn" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Điểm đánh giá</label>
+          <select id="review-rating" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-bold text-amber-500">
+            <option value="5">⭐⭐⭐⭐⭐ 5 Sao (Rất tốt, phòng y như ảnh)</option>
+            <option value="4">⭐⭐⭐⭐ 4 Sao (Tốt, an ninh ổn)</option>
+            <option value="3">⭐⭐⭐ 3 Sao (Tạm ổn)</option>
+            <option value="2">⭐⭐ 2 Sao (Phòng cũ, nhiều bất tiện)</option>
+            <option value="1">⭐ 1 Sao (Quá tệ / Không nên thuê)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Nhận xét thực tế *</label>
+          <textarea id="review-comment" required rows="3" placeholder="Chia sẻ về chủ trọ, an ninh, điện nước, ngập lụt..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+        </div>
+
+        <!-- Cờ báo cáo lừa đảo -->
+        <div class="bg-rose-50 border border-rose-200 rounded-xl p-3">
+          <label class="inline-flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="review-is-scam" onchange="toggleScamInput(this.checked)" class="accent-rose-600 rounded">
+            <span class="font-bold text-rose-700">Báo cáo tin đăng có dấu hiệu lừa đảo / cọc ảo</span>
+          </label>
+          <div id="scam-reason-box" class="hidden mt-2">
+            <input type="text" id="review-scam-reason" placeholder="VD: Bắt cọc trước khi xem phòng, giá ảo..." class="w-full bg-white border border-rose-300 rounded-lg px-2.5 py-1.5 text-xs text-rose-900 focus:outline-none">
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl transition shadow-md shadow-blue-500/20 text-xs flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-check"></i> Gửi đánh giá / Báo cáo
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 9. MODAL: ĐĂNG NHẬP & ĐĂNG KÝ PHÂN QUYỀN -->
+  <div id="auth-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 relative max-h-[92vh] overflow-y-auto">
+      <button onclick="closeModal('auth-modal')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <!-- 3 Tabs riêng biệt: Đăng nhập | Đăng ký Người thuê | Đăng ký Chủ trọ -->
+      <div class="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl mb-5 mr-8 text-[11px] font-bold">
+        <button id="tab-login-btn" onclick="switchAuthTab('login')" class="py-2 px-1.5 rounded-lg bg-white text-blue-600 shadow-sm transition">
+          Đăng nhập
+        </button>
+        <button id="tab-register-btn" onclick="switchAuthTab('register')" class="py-2 px-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
+          👤 ĐK Người thuê
+        </button>
+        <button id="tab-landlord-reg-btn" onclick="switchAuthTab('register-landlord')" class="py-2 px-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
+          🏠 ĐK Chủ trọ
+        </button>
+      </div>
+
+      <!-- Form Đăng nhập -->
+      <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Email *</label>
+          <input type="email" id="login-email" required placeholder="VD: admin@svtro.vn" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Mật khẩu *</label>
+          <input type="password" id="login-password" required placeholder="••••••" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl transition shadow-md shadow-blue-500/20 text-sm">
+          Đăng nhập
+        </button>
+
+        <!-- Nút điền nhanh 3 tài khoản phân quyền (Admin, Chủ trọ, Người thuê) -->
+        <div class="pt-3 border-t border-slate-100">
+          <p class="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wide">Đăng nhập nhanh theo vai trò (Mật khẩu: 123456):</p>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" onclick="quickFillLogin('admin@svtro.vn')" class="px-2 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1 transition">
+              👑 Admin
+            </button>
+            <button type="button" onclick="quickFillLogin('chutro@svtro.vn')" class="px-2 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1 transition">
+              🏠 Chủ trọ
+            </button>
+            <button type="button" onclick="quickFillLogin('nguoithue@svtro.vn')" class="px-2 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1 transition">
+              👤 Người thuê
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Form Đăng ký (Chuyển đổi trực tiếp giữa Tab ĐK Người thuê và Tab ĐK Chủ trọ) -->
+      <form id="register-form" onsubmit="handleRegisterSubmit(event)" class="space-y-3 text-xs hidden">
+        <input type="hidden" id="reg-role" value="tenant">
+        <div id="reg-role-notice" class="bg-emerald-600/15 border border-emerald-500/40 text-emerald-700 rounded-xl p-2.5 text-[11px] leading-relaxed font-semibold">
+          <i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i>
+          Tài khoản <strong>Người thuê</strong> đăng ký được <strong>kích hoạt ngay lập tức</strong> không cần chờ duyệt.
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Họ và tên *</label>
+          <input type="text" id="reg-name" required placeholder="VD: Nguyễn Văn A" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Email *</label>
+          <input type="email" id="reg-email" required placeholder="VD: email@gmail.com" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Số điện thoại (10 số) *</label>
+          <input type="text" id="reg-phone" required pattern="[0-9]{10}" placeholder="0905123456" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Mật khẩu (tối thiểu 6 ký tự) *</label>
+          <input type="password" id="reg-password" required minlength="6" placeholder="••••••" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div id="reg-reason-wrapper" class="hidden">
+          <label class="block font-bold text-slate-700 mb-1">Thông tin xác minh Chủ trọ gửi Admin duyệt *</label>
+          <textarea id="reg-reason" rows="2" placeholder="VD: Chủ dãy trọ 10 phòng tại đường Nguyễn Lương Bằng, Quận Liên Chiểu, Đà Nẵng..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+        </div>
+
+        <button id="reg-submit-btn" type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition shadow-md shadow-emerald-600/20 text-sm flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-user-plus"></i> Đăng ký &amp; Sử dụng ngay
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 10. MODAL: BẢNG ĐIỀU KHIỂN QUẢN LÝ (ADMIN & CHỦ TRỌ) -->
+  <div id="dashboard-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-3xl max-h-[90vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col relative">
+      <div class="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div>
+          <h3 id="dashboard-title" class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-gauge-high text-blue-600"></i> Bảng Điều Khiển Quản Lý
+          </h3>
+          <p id="dashboard-subtitle" class="text-xs text-slate-500">Quản lý hệ thống phòng trọ theo phân quyền</p>
+        </div>
+        <button onclick="closeModal('dashboard-modal')" class="w-8 h-8 rounded-full bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Tabs Dashboard -->
+      <div id="dashboard-tabs" class="flex flex-wrap gap-1 px-5 pt-3 border-b border-slate-200 bg-white text-xs font-bold">
+        <button onclick="loadDashboardTab('stats')" id="dash-tab-stats" class="px-3.5 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition hidden">
+          📊 Thống kê
+        </button>
+        <button onclick="loadDashboardTab('pending')" id="dash-tab-pending" class="px-3.5 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition hidden flex items-center gap-1.5">
+          <span>📩 Yêu cầu duyệt TK</span>
+          <span id="pending-users-badge" class="hidden px-1.5 py-0.5 text-[10px] rounded-full bg-rose-600 text-white font-bold">0</span>
+        </button>
+        <button onclick="loadDashboardTab('myrooms')" id="dash-tab-myrooms" class="px-3.5 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition">
+          🏠 Quản lý phòng
+        </button>
+        <button onclick="loadDashboardTab('appointments')" id="dash-tab-appointments" class="px-3.5 py-2.5 border-b-2 border-blue-600 text-blue-600 transition">
+          📅 Lịch hẹn &amp; Chờ phòng
+        </button>
+        <button onclick="loadDashboardTab('inbox')" id="dash-tab-inbox" class="px-3.5 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition">
+          💬 Tin nhắn khách
+        </button>
+        <button onclick="loadDashboardTab('billing')" id="dash-tab-billing" class="px-3.5 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition">
+          🧾 Hóa đơn &amp; VietQR
+        </button>
+        <button onclick="loadDashboardTab('users')" id="dash-tab-users" class="px-3.5 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition hidden">
+          👥 Tài khoản & Phân quyền
+        </button>
+        <button onclick="loadDashboardTab('scams')" id="dash-tab-scams" class="px-3.5 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition hidden">
+          🚨 Báo cáo lừa đảo
+        </button>
+      </div>
+
+      <!-- Nội dung Dashboard -->
+      <div id="dashboard-content" class="p-5 overflow-y-auto flex-1 text-xs space-y-3">
+        Đang tải dữ liệu...
+      </div>
+    </div>
+  </div>
+
+  <!-- 11. MODAL: CHỈNH SỬA THÔNG TIN PHÒNG TRỌ -->
+  <div id="edit-room-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg max-h-[90vh] rounded-3xl overflow-y-auto shadow-2xl p-6 relative">
+      <button onclick="closeModal('edit-room-modal')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <h3 class="text-base font-bold text-slate-900 mb-1 flex items-center gap-2">
+        <i class="fa-solid fa-pen-to-square text-blue-600"></i> Chỉnh sửa thông tin phòng trọ
+      </h3>
+      <p class="text-xs text-slate-500 mb-4">Cập nhật giá thuê, diện tích, điện nước hoặc tình trạng phòng.</p>
+
+      <form id="edit-room-form" onsubmit="handleEditRoomSubmit(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="edit-room-id">
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Tiêu đề *</label>
+          <input type="text" id="edit-room-title" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Giá thuê (VNĐ/tháng) *</label>
+            <input type="number" id="edit-room-price" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Diện tích (m²) *</label>
+            <input type="number" id="edit-room-area" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Tiền điện</label>
+            <input type="text" id="edit-room-electricity" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Tiền nước</label>
+            <input type="text" id="edit-room-water" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Tình trạng</label>
+            <select id="edit-room-status" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none font-bold">
+              <option value="available">🟢 Còn phòng</option>
+              <option value="full">🔴 Đã hết phòng</option>
+              <option value="available-soon">🟡 Sắp trống</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Số phòng trống</label>
+            <input type="number" id="edit-room-count" min="0" max="50" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Địa chỉ *</label>
+          <input type="text" id="edit-room-address" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Mô tả chi tiết</label>
+          <textarea id="edit-room-desc" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+        </div>
+
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl transition shadow-md shadow-blue-500/20 text-sm">
+          💾 Lưu thay đổi vào MongoDB
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 12. THANH NỔI SO SÁNH PHÒNG TRỌ -->
+  <div id="compare-bar" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 hidden bg-slate-900/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-3 max-w-[95vw]">
+    <div class="flex items-center gap-2 text-xs font-bold">
+      <i class="fa-solid fa-scale-balanced text-amber-400"></i>
+      <span id="compare-bar-text">Đã chọn 0/3 phòng</span>
+    </div>
+    <button onclick="openCompareModal()" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition shadow">
+      So sánh ngay
+    </button>
+    <button onclick="clearCompareList()" class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-xs transition" title="Bỏ chọn tất cả">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+
+  <!-- 13. MODAL: SO SÁNH 2-3 PHÒNG TRỌ -->
+  <div id="compare-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-4xl max-h-[90vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col relative">
+      <div class="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-scale-balanced text-blue-600"></i> So Sánh Chi Tiết Phòng Trọ
+        </h3>
+        <button onclick="closeModal('compare-modal')" class="w-8 h-8 rounded-full bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="compare-modal-content" class="p-5 overflow-x-auto overflow-y-auto flex-1 text-xs">
+        <!-- Render bảng so sánh -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 14. MODAL: LỊCH HẸN CỦA TÔI (CHO SINH VIÊN & NGƯỜI LAO ĐỘNG) -->
+  <div id="my-appointments-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xl max-h-[88vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col relative">
+      <div class="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-calendar-check text-emerald-600"></i> Lịch Hẹn Xem Phòng Của Tôi
+          </h3>
+          <p class="text-[11px] text-slate-500">Theo dõi trạng thái xác nhận từ chủ trọ theo thời gian thực</p>
+        </div>
+        <button onclick="closeModal('my-appointments-modal')" class="w-8 h-8 rounded-full bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="my-appointments-content" class="p-5 overflow-y-auto flex-1 text-xs space-y-3">
+        Đang tải lịch hẹn của bạn...
+      </div>
+    </div>
+  </div>
+
+  <!-- 15. MODAL: CHAT TRỰC TIẾP THỜI GIAN THỰC (WEBSOCKET / SOCKET.IO) -->
+  <div id="chat-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md h-[540px] max-h-[90vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col relative">
+      <div class="p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-comments"></i>
+          </div>
+          <div class="min-w-0">
+            <h3 class="text-sm font-bold truncate">Chat Trực Tiếp Với Chủ Trọ</h3>
+            <p id="chat-room-title" class="text-[11px] text-blue-100 truncate">Phòng trọ</p>
+          </div>
+        </div>
+        <button onclick="closeChatModal()" class="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition shrink-0">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Khung tin nhắn -->
+      <div id="chat-messages-box" class="flex-1 p-4 overflow-y-auto bg-slate-50 space-y-2.5 text-xs">
+        <div class="text-center text-slate-400 py-6">Đang kết nối phòng chat...</div>
+      </div>
+
+      <!-- Form gửi tin nhắn -->
+      <form onsubmit="sendChatMessage(event)" class="p-3 bg-white border-t border-slate-200 flex items-center gap-2">
+        <input type="hidden" id="chat-room-id">
+        <input type="text" id="chat-input" required placeholder="Nhập tin nhắn hỏi phòng..." autocomplete="off" class="flex-1 bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button type="submit" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow transition flex items-center gap-1">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 15.5. MODAL: XEM CHI TIẾT BÀI VIẾT BLOG -->
+  <div id="blog-detail-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <button onclick="closeModal('blog-detail-modal')" class="fixed top-4 right-4 sm:top-6 sm:right-6 z-[70] w-11 h-11 rounded-full bg-slate-900/90 hover:bg-rose-600 text-white border-2 border-white/30 shadow-2xl flex items-center justify-center transition hover:scale-105 active:scale-95" title="Đóng bài viết">
+      <i class="fa-solid fa-xmark text-lg"></i>
+    </button>
+    <div class="bg-white w-full max-w-2xl max-h-[90vh] rounded-3xl overflow-y-auto shadow-2xl relative">
+      <div id="blog-detail-content">
+        <!-- Nội dung bài viết Blog -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 15.6. MODAL: ĐĂNG BÀI VIẾT BLOG MỚI (CHỈ ADMIN) -->
+  <div id="add-blog-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xl max-h-[90vh] rounded-3xl overflow-y-auto shadow-2xl p-6 relative">
+      <button onclick="closeModal('add-blog-modal')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <h3 class="text-base font-bold text-slate-900 mb-1 flex items-center gap-2">
+        <i class="fa-solid fa-pen-nib text-indigo-600"></i> Đăng bài Blog / Thông báo cập nhật mới
+      </h3>
+      <p class="text-xs text-slate-500 mb-4">Chỉ Quản trị viên (Admin) mới có quyền xuất bản thông báo lên trang chủ.</p>
+
+      <form id="add-blog-form" onsubmit="handleAddBlogSubmit(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Tiêu đề bài viết *</label>
+          <input type="text" id="blog-title" required placeholder="VD: Thông báo cập nhật phiên bản mới SVTrọ 2.0..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Chuyên mục *</label>
+            <select id="blog-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              <option value="cap-nhat">📢 Cập nhật mới</option>
+              <option value="canh-bao">🚨 Cảnh báo lừa đảo</option>
+              <option value="kinh-nghiem">💡 Kinh nghiệm thuê trọ</option>
+              <option value="uu-dai">🎁 Ưu đãi SV &amp; NLĐ</option>
+            </select>
+          </div>
+          <div class="flex items-end pb-1.5">
+            <label class="inline-flex items-center gap-2 cursor-pointer bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl w-full">
+              <input type="checkbox" id="blog-pinned" class="accent-amber-600 rounded">
+              <span class="font-bold text-amber-800">📌 Ghim bài lên đầu trang</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Tóm tắt ngắn (hiển thị ngoài thẻ) *</label>
+          <input type="text" id="blog-summary" required placeholder="Mô tả ngắn gọn 1-2 câu về nội dung cập nhật..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Ảnh bìa bài viết (Tùy chọn tải từ máy)</label>
+          <input type="file" id="blog-image-input" accept="image/*" class="w-full bg-slate-50 border border-dashed border-slate-300 rounded-xl px-3 py-2 text-xs file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 cursor-pointer">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Nội dung chi tiết *</label>
+          <textarea id="blog-content" required rows="5" placeholder="Viết nội dung thông báo cập nhật chi tiết tại đây..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+        </div>
+
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition shadow-md shadow-indigo-500/20 text-sm">
+          🚀 Xuất bản bài viết lên MongoDB
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 15.7. MODAL: TẠO & IN HỢP ĐỒNG THUÊ TRỌ MẪU (PDF) -->
+  <div id="contract-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-3xl max-h-[92vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col relative">
+      <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-file-contract text-blue-600"></i> Tạo Hợp Đồng Thuê Trọ Mẫu Chuẩn (Xuất PDF)
+          </h3>
+          <p class="text-[11px] text-slate-500">Điền thông tin bên thuê để xuất bản hợp đồng đầy đủ giá thuê, điện nước &amp; điều khoản cọc</p>
+        </div>
+        <button onclick="closeModal('contract-modal')" class="w-8 h-8 rounded-full bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto flex-1 grid grid-cols-1 md:grid-cols-12 gap-5 text-xs">
+        <div class="md:col-span-5 space-y-3">
+          <input type="hidden" id="contract-room-id">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Họ tên Bên Thuê (Sinh viên / NLĐ) *</label>
+            <input type="text" id="contract-tenant-name" oninput="updateContractPreview()" placeholder="Nguyễn Văn A" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Số CCCD / CMND</label>
+            <input type="text" id="contract-tenant-cccd" oninput="updateContractPreview()" placeholder="04820400xxxx" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">SĐT Bên Thuê</label>
+            <input type="text" id="contract-tenant-phone" oninput="updateContractPreview()" placeholder="0905xxxxxx" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Tiền cọc (VNĐ)</label>
+              <input type="number" id="contract-deposit" oninput="updateContractPreview()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Thời hạn (Tháng)</label>
+              <select id="contract-months" onchange="updateContractPreview()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold">
+                <option value="6">6 tháng</option>
+                <option value="12" selected>12 tháng</option>
+              </select>
+            </div>
+          </div>
+          <button onclick="printRentalContract()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow transition flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-print"></i> In / Lưu file PDF Hợp đồng
+          </button>
+        </div>
+
+        <div class="md:col-span-7 bg-slate-50 border border-slate-200 rounded-2xl p-4 overflow-y-auto max-h-[420px]">
+          <div id="contract-preview-box" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm text-[11px] leading-relaxed text-slate-800 font-serif">
+            <!-- Xem trước hợp đồng -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 15.8. MODAL: TÌM BẠN Ở GHÉP HỢP GU THEO THÓI QUEN SINH HOẠT -->
+  <div id="roommate-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-6 relative">
+      <button onclick="closeModal('roommate-modal')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <h3 class="text-base font-bold text-slate-900 mb-1 flex items-center gap-2">
+        <span class="text-lg">🤝</span> Tìm Phòng &amp; Bạn Ở Ghép Hợp Gu
+      </h3>
+      <p class="text-xs text-slate-500 mb-4">Chọn thói quen sinh hoạt &amp; ngân sách để lọc phòng phù hợp nhất cho Sinh viên &amp; Người đi làm.</p>
+
+      <form onsubmit="applyRoommateMatch(event)" class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Giới tính ưu tiên</label>
+            <select id="rm-gender" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium">
+              <option value="any">Không yêu cầu</option>
+              <option value="nu">Ưu tiên Nữ</option>
+              <option value="nam">Ưu tiên Nam</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Giờ giấc sinh hoạt</label>
+            <select id="rm-schedule" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium">
+              <option value="tu-do">Giờ tự do 24/7 / Làm ca đêm</option>
+              <option value="ngu-som">Ngủ sớm, yên tĩnh</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Ngân sách tối đa mỗi người (chia 2 người)</label>
+          <select id="rm-budget" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold">
+            <option value="1000000">Dưới 1.0 triệu / người</option>
+            <option value="1500000" selected>Dưới 1.5 triệu / người</option>
+            <option value="2000000">Dưới 2.0 triệu / người</option>
+            <option value="5000000">Tất cả ngân sách</option>
+          </select>
+        </div>
+
+        <div class="flex flex-wrap gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="rm-no-smoke" checked class="accent-violet-600 rounded"> <span>Không hút thuốc</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="rm-ac" class="accent-violet-600 rounded"> <span>Cần có Máy lạnh</span>
+          </label>
+        </div>
+
+        <button type="submit" class="w-full py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold shadow transition text-sm">
+          🔍 Tìm phòng hợp gu ngay
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 15.85. MODAL: NGƯỜI THUÊ ĐĂNG TIN TÌM PHÒNG THEO YÊU CẦU -->
+  <div id="add-request-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg max-h-[90vh] rounded-3xl overflow-y-auto shadow-2xl p-6 relative">
+      <button onclick="closeModal('add-request-modal')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <h3 class="text-base font-extrabold text-slate-900 mb-1 flex items-center gap-2">
+        <i class="fa-solid fa-bullhorn text-emerald-600"></i> Đăng Tin Tìm Phòng Theo Yêu Cầu
+      </h3>
+      <p class="text-xs text-slate-500 mb-4">Nhập yêu cầu của bạn để các Chủ trọ có phòng phù hợp chủ động liên hệ và hẹn ký hợp đồng.</p>
+
+      <form id="add-request-form" onsubmit="handleAddRequestSubmit(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Tiêu đề nhu cầu *</label>
+          <input type="text" id="req-title" required placeholder="VD: Cần tìm phòng khép kín có máy lạnh gần ĐH Bách Khoa dưới 2.5tr" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Họ tên của bạn *</label>
+            <input type="text" id="req-name" required placeholder="Nguyễn Văn A" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">SĐT / Zalo liên hệ *</label>
+            <input type="text" id="req-phone" required placeholder="0905xxxxxx" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Khu vực mong muốn</label>
+            <select id="req-district" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              <option value="lien-chieu">Quận Liên Chiểu</option>
+              <option value="hai-chau">Quận Hải Châu</option>
+              <option value="ngu-hanh-son">Quận Ngũ Hành Sơn</option>
+              <option value="thanh-khe">Quận Thanh Khê</option>
+              <option value="cam-le">Quận Cẩm Lệ</option>
+              <option value="son-tra">Quận Sơn Trà</option>
+              <option value="hoa-vang">Huyện Hòa Vang</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Ngân sách tối đa (VNĐ) *</label>
+            <input type="number" id="req-budget" required min="500000" step="100000" value="2500000" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Số người ở</label>
+            <input type="number" id="req-people" min="1" max="6" value="1" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Loại phòng mong muốn</label>
+            <select id="req-type" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              <option value="phong-tro">Phòng trọ khép kín</option>
+              <option value="studio">Căn hộ Studio</option>
+              <option value="ccmn">Chung cư mini / 2PN</option>
+              <option value="ktx">Ký túc xá / Sleepbox</option>
+              <option value="o-ghep">Ở ghép</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">📅 Ngày dự kiến dọn vào *</label>
+            <input type="date" id="req-movein" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1.5">Tiện ích yêu cầu:</label>
+          <div class="flex flex-wrap gap-2">
+            <label class="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg cursor-pointer"><input type="checkbox" name="req-amenity" value="may-lanh" checked> ❄️ Máy lạnh</label>
+            <label class="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg cursor-pointer"><input type="checkbox" name="req-amenity" value="gac-lung"> 🪜 Gác lửng</label>
+            <label class="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg cursor-pointer"><input type="checkbox" name="req-amenity" value="ve-sinh-rieng" checked> 🚿 WC riêng</label>
+            <label class="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg cursor-pointer"><input type="checkbox" name="req-amenity" value="gio-tu-do" checked> 🕒 Giờ tự do</label>
+            <label class="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg cursor-pointer"><input type="checkbox" name="req-amenity" value="may-giat"> 🧺 Máy giặt</label>
+            <label class="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg cursor-pointer"><input type="checkbox" name="req-amenity" value="khoa-van-tay"> 🔐 Khóa vân tay</label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Mô tả thêm yêu cầu</label>
+          <textarea id="req-note" rows="3" placeholder="VD: Ưu tiên hẻm rộng, an ninh, có chỗ để xe, sẵn sàng ký hợp đồng dài hạn 6-12 tháng..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none"></textarea>
+        </div>
+
+        <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-600/20 text-sm transition">
+          📣 Đăng tin tìm phòng lên hệ thống
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 15.86. MODAL: CHỦ TRỌ GỬI ĐỀ XUẤT PHÒNG PHÙ HỢP CHO NGƯỜI THUÊ -->
+  <div id="offer-request-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md max-h-[90vh] rounded-3xl overflow-y-auto shadow-2xl p-6 relative">
+      <button onclick="closeModal('offer-request-modal')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <h3 class="text-base font-extrabold text-slate-900 mb-1 flex items-center gap-2">
+        <i class="fa-solid fa-handshake text-blue-600"></i> Gửi Đề Xuất Phòng Phù Hợp
+      </h3>
+      <p id="offer-request-target-title" class="text-xs text-slate-500 mb-4 line-clamp-2">...</p>
+
+      <form id="offer-request-form" onsubmit="handleOfferRequestSubmit(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="offer-request-id">
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Chọn phòng phù hợp của bạn (tùy chọn)</label>
+          <select id="offer-room-select" onchange="onOfferRoomSelectChange(this)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="">-- Nhập thông tin phòng trực tiếp --</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Giá thuê đề xuất (VNĐ) *</label>
+            <input type="number" id="offer-price" required min="500000" step="100000" placeholder="2300000" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">SĐT / Zalo Chủ trọ *</label>
+            <input type="text" id="offer-phone" required placeholder="0905xxxxxx" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Lời nhắn hẹn xem phòng &amp; ký hợp đồng *</label>
+          <textarea id="offer-message" required rows="3" placeholder="VD: Chào bạn, bên mình có phòng đúng yêu cầu cách ĐH Bách Khoa 300m, điện 3.2k, giờ tự do. Bạn gọi/Zalo mình qua xem phòng và làm hợp đồng nhé!" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+        </div>
+
+        <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/20 text-sm transition">
+          🤝 Gửi đề xuất tới Người thuê ngay
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 15.87. TRANG GROUP CỘNG ĐỒNG TÌM PHÒNG KIỂU FACEBOOK (FULL-SCREEN) -->
+  <div id="group-page-modal" class="fixed inset-0 z-50 hidden bg-slate-100 flex-col overflow-hidden">
+    <!-- Thanh Top Bar của Trang Group -->
+    <div class="bg-white border-b border-slate-200 px-4 sm:px-6 h-14 flex items-center justify-between gap-3 shrink-0 shadow-2xs">
+      <div class="flex items-center gap-3">
+        <button onclick="closeGroupPage()" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-arrow-left"></i> <span>Trang chủ</span>
+        </button>
+        <div class="flex items-center gap-2 font-extrabold text-sm text-blue-600">
+          <i class="fa-solid fa-users text-base"></i>
+          <span>SVTrọ Group • Cộng Đồng Tìm Phòng Đà Nẵng</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="openAddRequestModal()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-sm transition flex items-center gap-1.5">
+          <i class="fa-solid fa-pen-to-square"></i> Đăng bài tìm phòng
+        </button>
+        <button onclick="closeGroupPage()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Nội dung cuộn toàn trang kiểu Facebook Group -->
+    <div class="flex-1 overflow-y-auto">
+      <!-- Ảnh bìa Group kiểu Facebook -->
+      <div class="bg-white border-b border-slate-200 shadow-2xs">
+        <div class="max-w-5xl mx-auto">
+          <div class="h-36 sm:h-48 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 sm:rounded-b-3xl relative overflow-hidden flex items-end p-5 sm:p-6">
+            <div class="absolute inset-0 opacity-15" style="background-image: radial-gradient(circle at 20% 50%, white 2px, transparent 2px); background-size: 24px 24px;"></div>
+            <div class="relative z-10 text-white">
+              <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-[11px] font-bold mb-1.5">
+                <i class="fa-solid fa-earth-asia"></i> Nhóm công khai • Đà Nẵng
+              </div>
+              <h1 class="text-xl sm:text-2xl font-extrabold leading-tight">Cộng Đồng Tìm Phòng &amp; Cho Thuê Trọ SVTrọ Đà Nẵng</h1>
+              <p id="group-meta-stats" class="text-xs text-blue-100 mt-0.5">Kết nối trực tiếp Người thuê &amp; Chủ trọ • Đang tải số bài viết...</p>
+            </div>
+          </div>
+
+          <!-- Thanh Tab phụ của Group -->
+          <div class="px-5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs font-bold">
+            <div class="flex items-center gap-1.5">
+              <button onclick="setGroupStatusFilter('all', this)" class="group-tab-btn px-3.5 py-2 rounded-xl bg-blue-50 text-blue-700 transition">📰 Bảng tin</button>
+              <button onclick="setGroupStatusFilter('open', this)" class="group-tab-btn px-3.5 py-2 rounded-xl text-slate-600 hover:bg-slate-100 transition">🟢 Đang cần tìm</button>
+              <button onclick="setGroupStatusFilter('matched', this)" class="group-tab-btn px-3.5 py-2 rounded-xl text-slate-600 hover:bg-slate-100 transition">✅ Đã chốt phòng</button>
+            </div>
+            <select id="request-district-filter" onchange="loadRoomRequests()" class="bg-slate-100 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="all">📍 Tất cả quận Đà Nẵng</option>
+              <option value="lien-chieu">Quận Liên Chiểu</option>
+              <option value="hai-chau">Quận Hải Châu</option>
+              <option value="ngu-hanh-son">Quận Ngũ Hành Sơn</option>
+              <option value="thanh-khe">Quận Thanh Khê</option>
+              <option value="cam-le">Quận Cẩm Lệ</option>
+              <option value="son-tra">Quận Sơn Trà</option>
+              <option value="hoa-vang">Huyện Hòa Vang</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bố cục 2 cột giống Facebook Group (Feed ở giữa/trái + Giới thiệu ở phải) -->
+      <div class="max-w-5xl mx-auto px-4 py-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Cột Feed chính (8 cột) -->
+        <div class="lg:col-span-8 space-y-4">
+          <!-- Khung "Bạn đang cần tìm phòng như thế nào?" kiểu Facebook -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
+            <div class="flex items-center gap-3">
+              <div id="group-composer-avatar" class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold flex items-center justify-center shrink-0 overflow-hidden">
+                <i class="fa-solid fa-user"></i>
+              </div>
+              <button onclick="openAddRequestModal()" class="flex-1 text-left bg-slate-100 hover:bg-slate-200/80 text-slate-500 text-xs sm:text-sm px-4 py-2.5 rounded-full transition">
+                Bạn đang cần tìm phòng ở khu vực nào, ngân sách bao nhiêu?...
+              </button>
+            </div>
+            <div class="mt-3 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2 text-xs font-bold text-slate-600">
+              <button onclick="openAddRequestModal()" class="py-1.5 rounded-xl hover:bg-slate-100 flex items-center justify-center gap-1.5 transition">
+                <i class="fa-solid fa-calendar-days text-emerald-600"></i> Chọn ngày vào
+              </button>
+              <button onclick="openAddRequestModal()" class="py-1.5 rounded-xl hover:bg-slate-100 flex items-center justify-center gap-1.5 transition">
+                <i class="fa-solid fa-money-bill-wave text-blue-600"></i> Ngân sách
+              </button>
+              <button onclick="openAddRequestModal()" class="py-1.5 rounded-xl hover:bg-slate-100 flex items-center justify-center gap-1.5 transition">
+                <i class="fa-solid fa-location-dot text-rose-500"></i> Khu vực
+              </button>
+            </div>
+          </div>
+
+          <!-- Danh sách bài đăng trong Group (Vertical Feed giống Facebook) -->
+          <div id="room-requests-grid" class="space-y-4">
+            <div class="py-10 text-center text-slate-400 text-xs bg-white rounded-2xl border border-slate-200">Đang tải bảng tin Group...</div>
+          </div>
+        </div>
+
+        <!-- Cột Giới thiệu & Nội quy bên phải (4 cột) -->
+        <div class="lg:col-span-4 space-y-4">
+          <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2.5 text-xs">
+            <h3 class="font-extrabold text-slate-900 text-sm">Giới thiệu nhóm</h3>
+            <p class="text-slate-600 leading-relaxed">
+              Không gian kết nối trực tiếp giữa <strong>Người thuê</strong> và <strong>Chủ trọ</strong> tại Đà Nẵng. Người thuê đăng nhu cầu rõ ràng, chủ trọ có phòng đáp ứng sẽ gửi đề xuất &amp; liên hệ ký hợp đồng không qua trung gian.
+            </p>
+            <div class="space-y-1.5 pt-1 text-slate-600">
+              <div class="flex items-center gap-2"><i class="fa-solid fa-earth-asia w-4 text-blue-600"></i> <strong>Công khai:</strong> Ai cũng có thể xem &amp; đăng tin tìm phòng</div>
+              <div class="flex items-center gap-2"><i class="fa-solid fa-handshake w-4 text-emerald-600"></i> <strong>Chủ trọ xác thực:</strong> Gửi đề xuất kèm link phòng thật</div>
+              <div class="flex items-center gap-2"><i class="fa-solid fa-shield-halved w-4 text-amber-600"></i> <strong>An toàn:</strong> Kiểm tra phòng trực tiếp trước khi cọc</div>
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2 text-xs">
+            <h3 class="font-extrabold text-slate-900 text-sm">📌 Nội quy Group</h3>
+            <ul class="space-y-1.5 text-slate-600 list-disc pl-4">
+              <li>Ghi rõ <strong>khu vực, ngân sách và ngày dọn vào</strong> để chủ trọ lọc nhanh.</li>
+              <li>Chủ trọ chỉ gửi đề xuất phòng đúng giá, đúng hình ảnh thực tế.</li>
+              <li>Khi đã tìm được phòng, bấm <strong>✅ Đã chốt phòng</strong> để tránh bị gọi làm phiền.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 15.9. MENU TỔNG HỢP ĐÓNG/MỞ THUẬN TIỆN (SIDEBAR DRAWER) -->
+  <div id="main-menu-overlay" onclick="toggleMainMenu(false)" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 hidden"></div>
+  <aside id="main-menu-drawer" class="fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-white z-50 shadow-2xl border-r border-slate-200 flex flex-col -translate-x-full">
+    <!-- Đầu Menu -->
+    <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-base">
+          <i class="fa-solid fa-compass"></i>
+        </div>
+        <div>
+          <h3 class="text-sm font-extrabold" data-i18n="menu_title">Menu Tổng Hợp</h3>
+          <p class="text-[10px] text-blue-100">SVTrọ Đà Nẵng • NestJS + MongoDB</p>
+        </div>
+      </div>
+      <button onclick="toggleMainMenu(false)" class="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition" title="Đóng menu">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Thông tin tài khoản đang đăng nhập trong Menu -->
+    <div id="menu-user-card" class="p-4 bg-slate-50 border-b border-slate-200 text-xs">
+      <!-- Render bởi JS -->
+    </div>
+
+    <!-- Danh mục tính năng trong Menu -->
+    <div class="flex-1 overflow-y-auto p-3 space-y-4 text-xs">
+      <!-- Nhóm 0: TRANG QUẢN TRỊ RIÊNG CHO ADMIN (CHỈ ADMIN THẤY) -->
+      <div id="menu-admin-group" class="hidden p-2.5 rounded-2xl bg-gradient-to-br from-rose-50 via-amber-50/60 to-indigo-50 border border-rose-200">
+        <div class="px-1.5 mb-2 text-[10px] font-extrabold uppercase tracking-wider text-rose-700 flex items-center gap-1.5">
+          <i class="fa-solid fa-crown text-rose-600"></i> Không Gian Quản Trị Admin
+        </div>
+        <div class="space-y-1">
+          <button onclick="toggleMainMenu(false); openAdminPage('overview')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-sm transition text-left">
+            <i class="fa-solid fa-shield-halved w-4"></i> <span>Mở Trang Quản Trị Admin</span>
+          </button>
+          <button onclick="toggleMainMenu(false); openAdminPage('landlords')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white text-slate-800 font-bold transition text-left">
+            <i class="fa-solid fa-house-user w-4 text-amber-600"></i> <span>DS Chủ trọ &amp; Sửa phòng hộ</span>
+          </button>
+          <button onclick="toggleMainMenu(false); openAdminPage('users')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white text-slate-800 font-bold transition text-left">
+            <i class="fa-solid fa-users-gear w-4 text-blue-600"></i> <span>Tài khoản &amp; Duyệt đăng ký</span>
+          </button>
+          <button onclick="toggleMainMenu(false); openAdminPage('issues')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white text-slate-800 font-bold transition text-left">
+            <i class="fa-solid fa-triangle-exclamation w-4 text-rose-600"></i> <span>Xử lý lỗi &amp; Báo cáo</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Nhóm 0.5: TRANG QUẢN LÝ RIÊNG CHO CHỦ TRỌ (CHỈ CHỦ TRỌ THẤY) -->
+      <div id="menu-landlord-group" class="hidden p-2.5 rounded-2xl bg-gradient-to-br from-amber-50 via-blue-50/60 to-emerald-50 border border-amber-200">
+        <div class="px-1.5 mb-2 text-[10px] font-extrabold uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
+          <i class="fa-solid fa-house-user text-amber-600"></i> Trang Quản Lý Chủ Trọ
+        </div>
+        <div class="space-y-1">
+          <button onclick="toggleMainMenu(false); openLandlordPage('myrooms')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-sm transition text-left">
+            <i class="fa-solid fa-house-chimney-user w-4"></i> <span>Mở Trang Quản Lý Của Tôi</span>
+          </button>
+          <button onclick="toggleMainMenu(false); openLandlordPage('appointments')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white text-slate-800 font-bold transition text-left">
+            <i class="fa-solid fa-calendar-check w-4 text-emerald-600"></i> <span>Lịch hẹn &amp; Chờ phòng</span>
+          </button>
+          <button onclick="toggleMainMenu(false); openLandlordPage('inbox')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white text-slate-800 font-bold transition text-left">
+            <i class="fa-solid fa-comments w-4 text-blue-600"></i> <span>Tin nhắn khách thuê</span>
+          </button>
+          <button onclick="toggleMainMenu(false); openLandlordPage('billing')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white text-slate-800 font-bold transition text-left">
+            <i class="fa-solid fa-file-invoice-dollar w-4 text-indigo-600"></i> <span>Hóa đơn &amp; VietQR</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Nhóm 0.6: TRANG QUẢN LÝ RIÊNG CHO NGƯỜI THUÊ (CHỈ NGƯỜI THUÊ THẤY) -->
+      <div id="menu-tenant-group" class="hidden p-2.5 rounded-2xl bg-gradient-to-br from-blue-50 via-emerald-50/60 to-indigo-50 border border-blue-200">
+        <div class="px-1.5 mb-2 text-[10px] font-extrabold uppercase tracking-wider text-blue-800 flex items-center gap-1.5">
+          <i class="fa-solid fa-user-check text-blue-600"></i> Trang Quản Lý Người Thuê
+        </div>
+        <div class="space-y-1">
+          <button onclick="toggleMainMenu(false); openTenantPage('appointments')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm transition text-left">
+            <i class="fa-solid fa-calendar-check w-4"></i> <span>Mở Trang Của Tôi</span>
+          </button>
+          <button onclick="toggleMainMenu(false); openTenantPage('favorites')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white text-slate-800 font-bold transition text-left">
+            <i class="fa-solid fa-heart w-4 text-rose-500"></i> <span>Phòng yêu thích đã lưu</span>
+          </button>
+          <button onclick="toggleMainMenu(false); openTenantPage('myrequests')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white text-slate-800 font-bold transition text-left">
+            <i class="fa-solid fa-bullhorn w-4 text-emerald-600"></i> <span>Tin tìm phòng của tôi</span>
+          </button>
+          <button onclick="toggleMainMenu(false); openTenantPage('profile')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white text-slate-800 font-bold transition text-left">
+            <i class="fa-solid fa-id-card w-4 text-indigo-600"></i> <span>Hồ sơ &amp; Bảo mật</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Nhóm 1: Điều hướng nhanh -->
+      <div>
+        <div class="px-2.5 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400" data-i18n="menu_nav_group">Điều hướng nhanh</div>
+        <div class="space-y-1">
+          <button onclick="toggleMainMenu(false); window.scrollTo({top: 0, behavior: 'smooth'})" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-semibold transition text-left">
+            <i class="fa-solid fa-house w-4 text-blue-600"></i> <span data-i18n="menu_home">Trang chủ &amp; Tìm phòng</span>
+          </button>
+          <button onclick="toggleMainMenu(false); findRoomsNearMe()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-semibold transition text-left">
+            <i class="fa-solid fa-location-crosshairs w-4 text-emerald-600"></i> <span data-i18n="menu_map">Tìm phòng quanh tôi (3km)</span>
+          </button>
+          <button onclick="toggleMainMenu(false); openGroupPage()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-semibold transition text-left">
+            <i class="fa-solid fa-users w-4 text-blue-600"></i> <span>Group Tìm Phòng (Kiểu Facebook)</span>
+          </button>
+          <button onclick="toggleMainMenu(false); document.getElementById('blog-section').scrollIntoView({behavior: 'smooth'})" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-semibold transition text-left">
+            <i class="fa-solid fa-newspaper w-4 text-indigo-600"></i> <span data-i18n="menu_blog">Blog &amp; Cập nhật mới</span>
+          </button>
+          <button id="menu-fav-btn" onclick="toggleMainMenu(false); openFavoritesPage()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-semibold transition text-left">
+            <i class="fa-solid fa-heart w-4 text-rose-500"></i> <span data-i18n="menu_fav">Phòng đã lưu (Yêu thích)</span>
+          </button>
+          <button onclick="toggleMainMenu(false); openRoommateModal()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-semibold transition text-left">
+            <i class="fa-solid fa-people-roof w-4 text-violet-600"></i> <span data-i18n="menu_roommate">Tìm bạn ở ghép hợp gu</span>
+          </button>
+          <button onclick="toggleMainMenu(false); toggleAiWidget()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-semibold transition text-left">
+            <i class="fa-solid fa-robot w-4 text-sky-600"></i> <span data-i18n="menu_ai">Trợ lý AI giải đáp 24/7</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Nhóm 2: Tài khoản & Bảo mật -->
+      <div>
+        <div class="px-2.5 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400" data-i18n="menu_account_group">Tài khoản &amp; Bảo mật</div>
+        <div class="space-y-1">
+          <button onclick="toggleMainMenu(false); openProfileModal('info')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-semibold transition text-left">
+            <i class="fa-solid fa-id-card w-4 text-blue-600"></i> <span data-i18n="menu_profile">Hồ sơ thông tin cá nhân</span>
+          </button>
+          <button onclick="toggleMainMenu(false); openProfileModal('security')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-semibold transition text-left">
+            <i class="fa-solid fa-shield-halved w-4 text-emerald-600"></i> <span data-i18n="menu_security">Bảo mật &amp; Đổi mật khẩu</span>
+          </button>
+          <button onclick="toggleMainMenu(false); openProfileModal('history')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-semibold transition text-left">
+            <i class="fa-solid fa-clock-rotate-left w-4 text-amber-600"></i> <span data-i18n="menu_history">Nhật ký đăng nhập</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Nhóm 3: Giao diện Sáng/Tối & Đa Ngôn Ngữ -->
+      <div class="pt-2 border-t border-slate-200 space-y-3">
+        <div class="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400" data-i18n="menu_settings_group">Giao diện &amp; Ngôn ngữ</div>
+
+        <!-- Nút chuyển Nền Sáng / Tối -->
+        <div class="px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+          <span class="font-bold text-slate-700 flex items-center gap-2">
+            <i id="menu-theme-icon" class="fa-solid fa-moon text-indigo-600"></i>
+            <span id="menu-theme-label" data-i18n="menu_theme">Chế độ nền tối</span>
+          </span>
+          <button onclick="toggleDarkMode()" id="menu-theme-toggle" class="px-3 py-1 rounded-lg bg-slate-900 text-white text-[11px] font-bold transition">
+            Bật / Tắt
+          </button>
+        </div>
+
+        <!-- Chọn Ngôn ngữ (4 ngôn ngữ) -->
+        <div class="px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200">
+          <label class="block font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-globe text-blue-600"></i> <span data-i18n="menu_lang">Ngôn ngữ hiển thị</span>
+          </label>
+          <select id="language-select" onchange="setLanguage(this.value)" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800">
+            <option value="vi">🇻🇳 Tiếng Việt (Mặc định)</option>
+            <option value="en">🇬🇧 English (International)</option>
+            <option value="ko">🇰🇷 한국어 (Tiếng Hàn)</option>
+            <option value="ja">🇯🇵 日本語 (Tiếng Nhật)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 15.95. TRANG DÀNH RIÊNG CHO ADMIN (FULL-SCREEN VỚI THANH SIDEBAR BÊN TRÁI) -->
+  <div id="admin-page-modal" class="fixed inset-0 z-50 hidden bg-slate-100 flex-col md:flex-row overflow-hidden">
+    <!-- Thanh Sidebar Điều Hướng Admin bên trái -->
+    <aside class="w-full md:w-64 lg:w-72 bg-slate-900 text-slate-100 flex flex-col shrink-0 border-r border-slate-800">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center text-white shadow">
+            <i class="fa-solid fa-crown"></i>
+          </div>
+          <div>
+            <div class="text-sm font-extrabold text-white leading-tight">SVTrọ Admin</div>
+            <div class="text-[10px] text-slate-400">Trung tâm quản trị &amp; hỗ trợ</div>
+          </div>
+        </div>
+        <button onclick="closeAdminPage()" class="md:hidden w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Thông tin Admin đang trực -->
+      <div id="admin-sidebar-profile" class="px-4 py-3 bg-slate-800/60 border-b border-slate-800 text-xs flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-rose-600 text-white font-bold flex items-center justify-center shrink-0">A</div>
+        <div class="min-w-0">
+          <div class="font-bold text-white truncate">Phù Quốc Đạt</div>
+          <div class="text-[10px] text-emerald-400">● Đang trực quản trị</div>
+        </div>
+      </div>
+
+      <!-- Menu bên trái của Trang Admin -->
+      <nav class="p-3 flex-1 overflow-y-auto flex md:flex-col gap-1.5 text-xs font-bold">
+        <button onclick="loadAdminSection('overview')" id="admin-nav-overview" class="admin-nav-btn flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-blue-600 text-white transition text-left shrink-0">
+          <i class="fa-solid fa-chart-pie w-4"></i> <span>Tổng quan &amp; Hệ thống</span>
+        </button>
+        <button onclick="loadAdminSection('landlords')" id="admin-nav-landlords" class="admin-nav-btn flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition text-left shrink-0">
+          <i class="fa-solid fa-house-user w-4 text-amber-400"></i> <span>DS Chủ trọ &amp; Sửa phòng hộ</span>
+        </button>
+        <button onclick="loadAdminSection('tenants')" id="admin-nav-tenants" class="admin-nav-btn flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition text-left shrink-0">
+          <i class="fa-solid fa-user-group w-4 text-emerald-400"></i> <span>DS Người thuê &amp; Hỗ trợ</span>
+        </button>
+        <div>
+          <button onclick="toggleAdminUsersMenu()" id="admin-nav-users" class="admin-nav-btn w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition text-left shrink-0">
+            <span class="flex items-center gap-2.5"><i class="fa-solid fa-users-gear w-4 text-sky-400"></i> <span>Tài khoản &amp; Duyệt TK</span></span>
+            <span class="flex items-center gap-1.5">
+              <span id="admin-nav-pending-badge" class="hidden px-1.5 py-0.5 text-[10px] rounded-full bg-rose-600 text-white font-extrabold">0</span>
+              <i id="admin-users-chevron" class="fa-solid fa-chevron-down text-[10px] transition-transform"></i>
+            </span>
+          </button>
+          <!-- 2 mục trang riêng bên dưới Tài khoản & Duyệt TK -->
+          <div id="admin-users-submenu" class="hidden mt-1 pl-4 space-y-1">
+            <button onclick="loadAdminSection('users-landlord')" id="admin-nav-users-landlord" class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition text-left">
+              <i class="fa-solid fa-house-user w-3.5 text-amber-400"></i> <span>Tài khoản Chủ trọ</span>
+            </button>
+            <button onclick="loadAdminSection('users-tenant')" id="admin-nav-users-tenant" class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition text-left">
+              <i class="fa-solid fa-user w-3.5 text-emerald-400"></i> <span>Tài khoản Người thuê</span>
+            </button>
+          </div>
+        </div>
+        <button onclick="loadAdminSection('issues')" id="admin-nav-issues" class="admin-nav-btn flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition text-left shrink-0">
+          <i class="fa-solid fa-screwdriver-wrench w-4 text-rose-400"></i> <span>Xử lý lỗi &amp; Báo cáo</span>
+        </button>
+        <button onclick="loadAdminSection('blog')" id="admin-nav-blog" class="admin-nav-btn flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition text-left shrink-0">
+          <i class="fa-solid fa-newspaper w-4 text-indigo-400"></i> <span>Blog &amp; Thông báo</span>
+        </button>
+        <button onclick="openProfileModal('info')" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition text-left shrink-0">
+          <i class="fa-solid fa-id-card w-4 text-emerald-400"></i> <span>Hồ sơ &amp; Bảo mật</span>
+        </button>
+      </nav>
+
+      <!-- Nút quay lại trang web chính -->
+      <div class="p-3 border-t border-slate-800 hidden md:block">
+        <button onclick="closeAdminPage()" class="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-arrow-left"></i> Quay lại Trang chủ Web
+        </button>
+      </div>
+    </aside>
+
+    <!-- Nội dung chính bên phải của Trang Admin -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50">
+      <div class="px-5 py-3.5 bg-white border-b border-slate-200 flex items-center justify-between gap-3 shrink-0">
+        <div>
+          <h2 id="admin-page-heading" class="text-base font-extrabold text-slate-900">📊 Tổng quan &amp; Giám sát Hệ thống</h2>
+          <p id="admin-page-sub" class="text-[11px] text-slate-500">Quản lý danh sách chủ trọ, tài khoản, xử lý lỗi và hỗ trợ chỉnh sửa phòng theo yêu cầu</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="loadAdminSection(window._activeAdminSection || 'overview')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+            <i class="fa-solid fa-rotate"></i> Làm mới
+          </button>
+          <button onclick="closeAdminPage()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition">
+            <i class="fa-solid fa-xmark mr-1"></i> Đóng
+          </button>
+        </div>
+      </div>
+
+      <div id="admin-page-body" class="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+        Đang tải không gian quản trị...
+      </div>
+    </div>
+  </div>
+
+  <!-- 15.96. TRANG QUẢN LÝ RIÊNG CHO CHỦ TRỌ (FULL-SCREEN VỚI SIDEBAR BÊN TRÁI) -->
+  <div id="landlord-page-modal" class="fixed inset-0 z-50 hidden bg-slate-100 flex-col md:flex-row overflow-hidden">
+    <!-- Sidebar bên trái của Chủ trọ -->
+    <aside class="w-full md:w-64 lg:w-72 bg-slate-900 text-slate-100 flex flex-col shrink-0 border-r border-slate-800">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white shadow">
+            <i class="fa-solid fa-house-user"></i>
+          </div>
+          <div>
+            <div class="text-sm font-extrabold text-white leading-tight">Trang Chủ Trọ</div>
+            <div class="text-[10px] text-slate-400">Không gian quản lý riêng của bạn</div>
+          </div>
+        </div>
+        <button onclick="closeLandlordPage()" class="md:hidden w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Thông tin Chủ trọ đang đăng nhập -->
+      <div id="landlord-sidebar-profile" class="px-4 py-3 bg-slate-800/60 border-b border-slate-800 text-xs flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-amber-600 text-white font-bold flex items-center justify-center shrink-0">C</div>
+        <div class="min-w-0">
+          <div class="font-bold text-white truncate">Chủ trọ</div>
+          <div class="text-[10px] text-emerald-400">● Không gian tách biệt</div>
+        </div>
+      </div>
+
+      <!-- Menu bên trái của Trang Chủ Trọ -->
+      <nav class="p-3 flex-1 overflow-y-auto flex md:flex-col gap-1.5 text-xs font-bold">
+        <button onclick="loadLandlordSection('myrooms')" id="landlord-nav-myrooms" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-blue-600 text-white transition text-left shrink-0">
+          <i class="fa-solid fa-house-chimney w-4"></i> <span>Phòng của tôi</span>
+        </button>
+        <button onclick="loadLandlordSection('appointments')" id="landlord-nav-appointments" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition text-left shrink-0">
+          <i class="fa-solid fa-calendar-check w-4 text-emerald-400"></i> <span>Lịch hẹn &amp; Chờ phòng</span>
+        </button>
+        <button onclick="loadLandlordSection('inbox')" id="landlord-nav-inbox" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition text-left shrink-0">
+          <i class="fa-solid fa-comments w-4 text-sky-400"></i> <span>Tin nhắn khách</span>
+        </button>
+        <button onclick="loadLandlordSection('billing')" id="landlord-nav-billing" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition text-left shrink-0">
+          <i class="fa-solid fa-file-invoice-dollar w-4 text-amber-400"></i> <span>Hóa đơn &amp; VietQR</span>
+        </button>
+        <button onclick="openProfileModal('info')" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition text-left shrink-0">
+          <i class="fa-solid fa-id-card w-4 text-violet-400"></i> <span>Hồ sơ &amp; Bảo mật</span>
+        </button>
+        <div class="pt-2 md:mt-2 md:border-t md:border-slate-800">
+          <button onclick="openAddRoomModal()" class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow transition shrink-0">
+            <i class="fa-solid fa-plus"></i> <span>Đăng phòng mới</span>
+          </button>
+        </div>
+      </nav>
+
+      <!-- Nút quay lại trang web chính -->
+      <div class="p-3 border-t border-slate-800 hidden md:block">
+        <button onclick="closeLandlordPage()" class="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-arrow-left"></i> Quay lại Trang chủ Web
+        </button>
+      </div>
+    </aside>
+
+    <!-- Nội dung chính bên phải của Trang Chủ Trọ -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50">
+      <div class="px-5 py-3.5 bg-white border-b border-slate-200 flex items-center justify-between gap-3 shrink-0">
+        <div>
+          <h2 id="landlord-page-heading" class="text-base font-extrabold text-slate-900">🏠 Phòng Trọ Của Tôi</h2>
+          <p id="landlord-page-sub" class="text-[11px] text-slate-500">Chỉ hiển thị các phòng do chính bạn đăng — dễ dàng đăng, sửa, xóa mà không nhầm với chủ trọ khác</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="loadLandlordSection(window._activeLandlordSection || 'myrooms')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+            <i class="fa-solid fa-rotate"></i> Làm mới
+          </button>
+          <button onclick="closeLandlordPage()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition">
+            <i class="fa-solid fa-xmark mr-1"></i> Đóng
+          </button>
+        </div>
+      </div>
+
+      <div id="landlord-page-body" class="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+        Đang tải không gian quản lý phòng...
+      </div>
+    </div>
+  </div>
+
+  <!-- 15.97. TRANG RIÊNG PHÒNG YÊU THÍCH ĐÃ LƯU CHO NGƯỜI THUÊ (FULL-SCREEN) -->
+  <div id="favorites-page-modal" class="fixed inset-0 z-50 hidden bg-slate-100 flex-col overflow-hidden">
+    <!-- Top Bar -->
+    <div class="bg-white border-b border-slate-200 px-4 sm:px-6 h-14 flex items-center justify-between gap-3 shrink-0 shadow-2xs">
+      <div class="flex items-center gap-3">
+        <button onclick="closeFavoritesPage()" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-arrow-left"></i> <span>Trang chủ</span>
+        </button>
+        <div class="flex items-center gap-2 font-extrabold text-sm text-rose-600">
+          <i class="fa-solid fa-heart text-base"></i>
+          <span>Phòng Yêu Thích Đã Lưu</span>
+          <span id="fav-page-count-pill" class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[11px] font-extrabold">0</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="clearAllFavorites()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs transition">
+          <i class="fa-solid fa-trash-can mr-1"></i> Xóa tất cả
+        </button>
+        <button onclick="closeFavoritesPage()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Nội dung Trang Phòng Yêu Thích -->
+    <div class="flex-1 overflow-y-auto">
+      <div class="max-w-6xl mx-auto p-4 sm:p-6 space-y-5">
+        <!-- Thanh tìm kiếm & lọc lại trong danh sách đã lưu -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center gap-3">
+          <div class="flex-1 relative">
+            <i class="fa-solid fa-magnifying-glass text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 text-xs"></i>
+            <input type="text" id="fav-search-input" oninput="renderFavoritesPage()" placeholder="Tìm lại nhanh trong phòng đã lưu (tên phòng, quận, địa chỉ, ghi chú)..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none">
+          </div>
+          <select id="fav-status-filter" onchange="renderFavoritesPage()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700">
+            <option value="all">Tất cả tình trạng</option>
+            <option value="available">🟢 Chỉ phòng còn trống</option>
+          </select>
+          <select id="fav-sort-select" onchange="renderFavoritesPage()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700">
+            <option value="recent">Mới lưu gần đây</option>
+            <option value="price-asc">Giá thấp → cao</option>
+            <option value="price-desc">Giá cao → thấp</option>
+            <option value="area-desc">Diện tích lớn → nhỏ</option>
+          </select>
+        </div>
+
+        <!-- Danh sách phòng đã lưu -->
+        <div id="favorites-page-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <!-- Render bởi JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 15.98. TRANG QUẢN LÝ RIÊNG CHO NGƯỜI THUÊ (FULL-SCREEN VỚI SIDEBAR BÊN TRÁI) -->
+  <div id="tenant-page-modal" class="fixed inset-0 z-50 hidden bg-slate-100 flex-col md:flex-row overflow-hidden">
+    <!-- Sidebar bên trái của Người thuê -->
+    <aside class="w-full md:w-64 lg:w-72 bg-slate-900 text-slate-100 flex flex-col shrink-0 border-r border-slate-800">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-500 to-emerald-500 flex items-center justify-center text-white shadow">
+            <i class="fa-solid fa-user-check"></i>
+          </div>
+          <div>
+            <div class="text-sm font-extrabold text-white leading-tight">Trang Người Thuê</div>
+            <div class="text-[10px] text-slate-400">Quản lý lịch hẹn, phòng lưu &amp; hồ sơ</div>
+          </div>
+        </div>
+        <button onclick="closeTenantPage()" class="md:hidden w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Thông tin Người thuê đang đăng nhập -->
+      <div id="tenant-sidebar-profile" class="px-4 py-3 bg-slate-800/60 border-b border-slate-800 text-xs flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center shrink-0">N</div>
+        <div class="min-w-0">
+          <div class="font-bold text-white truncate">Người thuê</div>
+          <div class="text-[10px] text-emerald-400">● Tài khoản đã xác thực</div>
+        </div>
+      </div>
+
+      <!-- Menu bên trái của Trang Người Thuê -->
+      <nav class="p-3 flex-1 overflow-y-auto flex md:flex-col gap-1.5 text-xs font-bold">
+        <button onclick="loadTenantSection('appointments')" id="tenant-nav-appointments" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-blue-600 text-white transition text-left shrink-0">
+          <i class="fa-solid fa-calendar-check w-4"></i> <span>Lịch hẹn xem phòng</span>
+        </button>
+        <button onclick="loadTenantSection('favorites')" id="tenant-nav-favorites" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition text-left shrink-0">
+          <i class="fa-solid fa-heart w-4 text-rose-400"></i> <span>Phòng yêu thích đã lưu</span>
+        </button>
+        <button onclick="loadTenantSection('myrequests')" id="tenant-nav-myrequests" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition text-left shrink-0">
+          <i class="fa-solid fa-bullhorn w-4 text-emerald-400"></i> <span>Tin tìm phòng của tôi</span>
+        </button>
+        <button onclick="loadTenantSection('profile')" id="tenant-nav-profile" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition text-left shrink-0">
+          <i class="fa-solid fa-id-card w-4 text-sky-400"></i> <span>Hồ sơ &amp; Ảnh đại diện</span>
+        </button>
+        <button onclick="loadTenantSection('security')" id="tenant-nav-security" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition text-left shrink-0">
+          <i class="fa-solid fa-shield-halved w-4 text-amber-400"></i> <span>Bảo mật &amp; Nhật ký</span>
+        </button>
+      </nav>
+
+      <!-- Nút quay lại trang web chính -->
+      <div class="p-3 border-t border-slate-800 hidden md:block">
+        <button onclick="closeTenantPage()" class="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-arrow-left"></i> Quay lại Trang chủ Web
+        </button>
+      </div>
+    </aside>
+
+    <!-- Nội dung chính bên phải của Trang Người Thuê -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50">
+      <div class="px-5 py-3.5 bg-white border-b border-slate-200 flex items-center justify-between gap-3 shrink-0">
+        <div>
+          <h2 id="tenant-page-heading" class="text-base font-extrabold text-slate-900">📅 Lịch Hẹn Xem Phòng Của Tôi</h2>
+          <p id="tenant-page-sub" class="text-[11px] text-slate-500">Theo dõi lịch hẹn, phòng đã lưu, tin tìm phòng và quản lý hồ sơ cá nhân</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="loadTenantSection(window._activeTenantSection || 'appointments')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+            <i class="fa-solid fa-rotate"></i> Làm mới
+          </button>
+          <button onclick="closeTenantPage()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition">
+            <i class="fa-solid fa-xmark mr-1"></i> Đóng
+          </button>
+        </div>
+      </div>
+
+      <div id="tenant-page-body" class="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+        Đang tải trang quản lý người thuê...
+      </div>
+    </div>
+  </div>
+
+  <!-- 15.10. MODAL: HỒ SƠ CÁ NHÂN, BẢO MẬT & NHẬT KÝ ĐĂNG NHẬP -->
+  <div id="profile-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xl max-h-[90vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col relative">
+      <div class="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-user-gear text-blue-600"></i> Hồ Sơ Cá Nhân &amp; Bảo Mật
+          </h3>
+          <p class="text-[11px] text-slate-500">Quản lý thông tin tài khoản, đổi mật khẩu và theo dõi nhật ký đăng nhập</p>
+        </div>
+        <button onclick="closeModal('profile-modal')" class="w-8 h-8 rounded-full bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- 3 Tabs Hồ sơ / Bảo mật / Nhật ký -->
+      <div class="flex gap-1 px-5 pt-3 border-b border-slate-200 bg-white text-xs font-bold">
+        <button onclick="switchProfileTab('info')" id="prof-tab-info" class="px-3.5 py-2.5 border-b-2 border-blue-600 text-blue-600 transition">
+          👤 Hồ sơ cá nhân
+        </button>
+        <button onclick="switchProfileTab('security')" id="prof-tab-security" class="px-3.5 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition">
+          🔐 Đổi mật khẩu
+        </button>
+        <button onclick="switchProfileTab('history')" id="prof-tab-history" class="px-3.5 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition">
+          📜 Nhật ký đăng nhập
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto flex-1 text-xs">
+        <!-- Tab 1: Hồ sơ cá nhân -->
+        <form id="prof-panel-info" onsubmit="handleProfileUpdate(event)" class="space-y-3.5">
+          <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between">
+            <div>
+              <div class="text-[11px] text-slate-500">Email tài khoản:</div>
+              <div id="prof-email-display" class="font-bold text-slate-900 text-sm">...</div>
+            </div>
+            <span id="prof-role-badge" class="px-2.5 py-1 rounded-full text-[11px] font-bold border">...</span>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Họ và tên *</label>
+            <input type="text" id="prof-fullname" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Số điện thoại liên hệ *</label>
+            <input type="text" id="prof-phone" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1.5">Ảnh đại diện (Tải ảnh từ máy tính)</label>
+            <div class="flex items-center gap-3.5 bg-slate-50 border border-dashed border-slate-300 rounded-xl p-3">
+              <div id="prof-avatar-preview" class="w-14 h-14 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-lg overflow-hidden shrink-0 border-2 border-white shadow">
+                A
+              </div>
+              <div class="flex-1 min-w-0">
+                <input type="file" id="prof-avatar-file" accept="image/*" onchange="previewProfileAvatar(event)" class="w-full text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+                <p class="text-[10px] text-slate-500 mt-1">Hỗ trợ JPG, PNG, WebP (tối đa 5MB)</p>
+              </div>
+            </div>
+          </div>
+          <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow transition text-sm">
+            💾 Lưu thông tin hồ sơ
+          </button>
+        </form>
+
+        <!-- Tab 2: Bảo mật & Đổi mật khẩu -->
+        <form id="prof-panel-security" onsubmit="handleChangePassword(event)" class="space-y-3.5 hidden">
+          <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-[11px]">
+            <i class="fa-solid fa-lock mr-1"></i> Mật khẩu được mã hóa một chiều bằng thuật toán <strong>Bcrypt</strong> trong MongoDB.
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Mật khẩu hiện tại *</label>
+            <input type="password" id="sec-old-pass" required placeholder="••••••" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Mật khẩu mới (tối thiểu 6 ký tự) *</label>
+            <input type="password" id="sec-new-pass" required minlength="6" placeholder="••••••" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Nhập lại mật khẩu mới *</label>
+            <input type="password" id="sec-confirm-pass" required minlength="6" placeholder="••••••" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow transition text-sm">
+            🔐 Cập nhật mật khẩu bảo mật
+          </button>
+        </form>
+
+        <!-- Tab 3: Nhật ký đăng nhập -->
+        <div id="prof-panel-history" class="hidden space-y-2.5">
+          <div id="login-history-list" class="space-y-2">Đang tải nhật ký đăng nhập...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 16. TRỢ LÝ AI HỖ TRỢ KHÁCH HÀNG 24/7 (FLOATING WIDGET) -->
+  <div id="ai-assistant-root" class="fixed bottom-5 right-5 z-50 flex flex-col items-end">
+    <!-- Cửa sổ chat AI -->
+    <div id="ai-widget-panel" class="hidden mb-3 w-[360px] max-w-[92vw] h-[510px] max-h-[78vh] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
+      <!-- Header AI -->
+      <div class="p-4 bg-gradient-to-r from-indigo-600 via-blue-600 to-sky-600 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-lg shadow-inner">
+            <i class="fa-solid fa-robot"></i>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold leading-tight flex items-center gap-1.5">
+              Trợ lý AI SVTrọ
+              <span class="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
+            </h4>
+            <p class="text-[11px] text-blue-100">Tư vấn phòng & giải đáp 24/7</p>
+          </div>
+        </div>
+        <button onclick="toggleAiWidget()" class="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Khung hội thoại AI -->
+      <div id="ai-messages-box" class="flex-1 p-3.5 overflow-y-auto bg-slate-50 space-y-3 text-xs">
+        <div class="flex items-start gap-2">
+          <div class="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
+            <i class="fa-solid fa-robot text-xs"></i>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-2xl rounded-tl-sm p-3 text-slate-700 shadow-sm leading-relaxed">
+            👋 Xin chào! Tôi là <strong>Trợ lý AI của SVTrọ Đà Nẵng</strong>.<br>
+            Bạn cần tìm phòng gần trường ĐH, Khu Công Nghiệp, hỏi giá rẻ nhất hay hướng dẫn sử dụng web cứ nhắn tôi nhé!
+          </div>
+        </div>
+
+        <!-- Gợi ý hỏi nhanh 1 chạm -->
+        <div class="flex flex-wrap gap-1.5 pl-9">
+          <button onclick="askAiQuick('Tìm trọ gần ĐH Bách Khoa dưới 2 triệu')" class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-[11px] font-semibold transition text-left">
+            🎓 Trọ gần Bách Khoa &lt; 2tr
+          </button>
+          <button onclick="askAiQuick('Tìm phòng cho công nhân gần KCN Hòa Khánh')" class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-[11px] font-semibold transition text-left">
+            🏭 Trọ KCN Hòa Khánh
+          </button>
+          <button onclick="askAiQuick('Phòng nào đang rẻ nhất hiện tại?')" class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-[11px] font-semibold transition text-left">
+            💰 Phòng rẻ nhất
+          </button>
+          <button onclick="askAiQuick('Làm sao để tránh lừa đảo cọc trọ?')" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-[11px] font-semibold transition text-left">
+            🛡️ Tránh lừa đảo cọc
+          </button>
+          <button onclick="askAiQuick('Hướng dẫn đăng ký tài khoản và đăng tin')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-[11px] font-semibold transition text-left">
+            📝 Cách đăng ký &amp; đăng tin
+          </button>
+        </div>
+      </div>
+
+      <!-- Ô nhập câu hỏi cho AI -->
+      <form onsubmit="sendAiQuestion(event)" class="p-3 bg-white border-t border-slate-200 flex items-center gap-2">
+        <input type="text" id="ai-question-input" required placeholder="Hỏi AI (VD: Trọ gần Đông Á có máy lạnh)..." autocomplete="off" class="flex-1 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <button type="submit" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow transition">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Nút tròn mở Trợ lý AI -->
+    <button onclick="toggleAiWidget()" id="ai-fab-btn" class="group flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white px-4 py-3 rounded-full shadow-xl shadow-indigo-500/30 transition hover:scale-105 active:scale-95">
+      <i class="fa-solid fa-robot text-lg"></i>
+      <span class="text-xs font-bold">Trợ lý AI</span>
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-300 animate-ping"></span>
+    </button>
+  </div>
+
+  <!-- 17. TOAST CONTAINER -->
+  <div id="toast-container" class="fixed top-20 right-6 z-50 flex flex-col gap-2"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Chart.js (Biểu đồ thống kê Admin) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <!-- SheetJS (Xuất file Excel .xlsx hóa đơn gửi người thuê) -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <!-- Socket.io Client (Chat trực tiếp NestJS WebSocket) -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+  <!-- Các file kịch bản JavaScript của dự án -->
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
