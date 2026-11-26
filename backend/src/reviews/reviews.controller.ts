@@ -5,6 +5,7 @@ import { CreateReviewDto } from './dto/create-review.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserRole } from '../users/schemas/user.schema';
 
 @ApiTags('Reviews - Đánh giá & Báo cáo lừa đảo')
@@ -13,9 +14,16 @@ export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Gửi đánh giá hoặc Báo cáo lừa đảo cho một phòng trọ' })
-  create(@Body() createDto: CreateReviewDto) {
-    return this.reviewsService.create(createDto);
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '[Đã đăng nhập] Gửi đánh giá hoặc Báo cáo lừa đảo (mỗi tài khoản 1 lần/phòng)' })
+  create(
+    @Body() createDto: CreateReviewDto,
+    @CurrentUser('sub') userId: string,
+    @CurrentUser('fullName') fullName: string,
+    @CurrentUser('email') email: string,
+  ) {
+    return this.reviewsService.create(createDto, { userId, fullName, email });
   }
 
   @Get('room/:roomId')

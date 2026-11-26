@@ -10,6 +10,7 @@ import { ChatModule } from './chat/chat.module';
 import { AiModule } from './ai/ai.module';
 import { PostsModule } from './posts/posts.module';
 import { RoomRequestsModule } from './room-requests/room-requests.module';
+import { BillingModule } from './billing/billing.module';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -29,6 +30,7 @@ dotenv.config();
     AiModule,
     PostsModule,
     RoomRequestsModule,
+    BillingModule,
   ],
 })
 export class AppModule {}

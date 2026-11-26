@@ -1150,44 +1150,59 @@ function openAppointmentModal(roomId, roomTitle) {
   }
 }
 
-// Xử lý gửi Đặt lịch xem phòng (Gọi NestJS API hoặc fallback)
+// Xử lý gửi Đặt lịch xem phòng (Kiểm tra kết quả lưu MongoDB nghiêm ngặt — không báo thành công ảo)
 async function handleAppointmentSubmit(e) {
   e.preventDefault();
   const roomId = document.getElementById("appt-room-id").value;
-  const tenantName = document.getElementById("appt-tenant-name").value;
-  const tenantPhone = document.getElementById("appt-tenant-phone").value;
+  const tenantName = document.getElementById("appt-tenant-name").value.trim();
+  const tenantPhone = document.getElementById("appt-tenant-phone").value.trim();
   const tenantEmail = currentUser ? currentUser.email : "";
   const appointmentDate = document.getElementById("appt-date").value;
   const appointmentTime = document.getElementById("appt-time").value;
-  const note = document.getElementById("appt-note").value;
+  const note = document.getElementById("appt-note").value.trim();
 
-  if (isBackendOnline && roomId && roomId.length === 24) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/appointments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId, tenantName, tenantPhone, tenantEmail, appointmentDate, appointmentTime, note })
-      });
-      if (res.ok) {
-        showToast("🎉 Đã lưu lịch hẹn vào MongoDB! Chủ trọ sẽ liên hệ bạn sớm.", "success");
-        closeModal("appointment-modal");
-        document.getElementById("appointment-form").reset();
-        return;
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  if (!isBackendOnline || !roomId || roomId.length !== 24) {
+    showToast("❌ Không thể kết nối máy chủ Backend để lưu lịch hẹn. Vui lòng thử lại sau!", "info");
+    return;
   }
 
-  showToast("🎉 Đã gửi lịch hẹn xem phòng thành công! Chủ trọ sẽ liên hệ bạn.", "success");
-  closeModal("appointment-modal");
-  document.getElementById("appointment-form").reset();
+  try {
+    const res = await fetch(`${API_BASE_URL}/appointments`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ roomId, tenantName, tenantPhone, tenantEmail, appointmentDate, appointmentTime, note })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = Array.isArray(data.message) ? data.message[0] : data.message;
+      showToast(`❌ ${msg || "Không thể đặt lịch xem phòng!"}`, "info");
+      return;
+    }
+
+    showToast("🎉 Đã lưu lịch hẹn thành công vào MongoDB! Chủ trọ sẽ liên hệ bạn sớm.", "success");
+    closeModal("appointment-modal");
+    document.getElementById("appointment-form").reset();
+  } catch (err) {
+    console.error(err);
+    showToast("❌ Lỗi kết nối máy chủ — lịch hẹn chưa được lưu!", "info");
+  }
 }
 
-// Mở modal Đánh giá & Báo cáo lừa đảo
+// Mở modal Đánh giá & Báo cáo lừa đảo (Yêu cầu đăng nhập để gắn danh tính đáng tin cậy)
 function openReviewModal(roomId, roomTitle) {
+  if (!currentUser || !authToken) {
+    showToast("🔒 Vui lòng đăng nhập tài khoản để gửi đánh giá hoặc báo cáo lừa đảo!", "info");
+    openAuthModal("login");
+    return;
+  }
   document.getElementById("review-room-id").value = roomId;
   document.getElementById("review-room-title-display").textContent = roomTitle || "Phòng trọ";
+  const authorInput = document.getElementById("review-author-name");
+  if (authorInput) {
+    authorInput.value = currentUser.fullName || "";
+    authorInput.readOnly = true;
+    authorInput.classList.add("opacity-75", "cursor-not-allowed");
+  }
   const modal = document.getElementById("review-modal");
   if (modal) {
     modal.classList.remove("hidden");
@@ -1203,38 +1218,48 @@ function toggleScamInput(checked) {
   }
 }
 
-// Xử lý gửi Đánh giá / Báo cáo (Gọi NestJS API hoặc fallback)
+// Xử lý gửi Đánh giá / Báo cáo (Yêu cầu JWT, mỗi tài khoản chỉ 1 lần/phòng — không báo ảo)
 async function handleReviewSubmit(e) {
   e.preventDefault();
-  const roomId = document.getElementById("review-room-id").value;
-  const authorName = document.getElementById("review-author-name").value;
-  const rating = parseInt(document.getElementById("review-rating").value);
-  const comment = document.getElementById("review-comment").value;
-  const isScamReport = document.getElementById("review-is-scam").checked;
-  const reportReason = document.getElementById("review-scam-reason")?.value || "";
-
-  if (isBackendOnline && roomId && roomId.length === 24) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/reviews`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId, authorName, rating, comment, isScamReport, reportReason })
-      });
-      if (res.ok) {
-        showToast(isScamReport ? "🚨 Báo cáo lừa đảo đã gửi tới Admin kiểm duyệt!" : "⭐ Cảm ơn bạn đã gửi đánh giá vào MongoDB!", "success");
-        closeModal("review-modal");
-        document.getElementById("review-form").reset();
-        loadRoomReviews(roomId);
-        return;
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  if (!currentUser || !authToken) {
+    showToast("🔒 Vui lòng đăng nhập để gửi đánh giá!", "info");
+    openAuthModal("login");
+    return;
   }
 
-  showToast(isScamReport ? "🚨 Báo cáo lừa đảo đã được ghi nhận!" : "⭐ Cảm ơn bạn đã gửi đánh giá!", "success");
-  closeModal("review-modal");
-  document.getElementById("review-form").reset();
+  const roomId = document.getElementById("review-room-id").value;
+  const authorName = currentUser.fullName || document.getElementById("review-author-name").value;
+  const rating = parseInt(document.getElementById("review-rating").value);
+  const comment = document.getElementById("review-comment").value.trim();
+  const isScamReport = document.getElementById("review-is-scam").checked;
+  const reportReason = document.getElementById("review-scam-reason")?.value.trim() || "";
+
+  if (!isBackendOnline || !roomId || roomId.length !== 24) {
+    showToast("❌ Không kết nối được Backend NestJS để lưu đánh giá!", "info");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/reviews`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ roomId, authorName, rating, comment, isScamReport, reportReason })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = Array.isArray(data.message) ? data.message[0] : data.message;
+      showToast(`❌ ${msg || "Không thể gửi đánh giá!"}`, "info");
+      return;
+    }
+
+    showToast(isScamReport ? "🚨 Báo cáo lừa đảo đã gửi tới Admin kiểm duyệt!" : "⭐ Cảm ơn bạn đã gửi đánh giá vào MongoDB!", "success");
+    closeModal("review-modal");
+    document.getElementById("review-form").reset();
+    loadRoomReviews(roomId);
+  } catch (err) {
+    console.error(err);
+    showToast("❌ Lỗi kết nối máy chủ — đánh giá chưa được lưu!", "info");
+  }
 }
 
 // Xử lý khi đăng tin trọ mới tại Đà Nẵng
@@ -2187,6 +2212,7 @@ async function loadDashboardTab(tab, customContent = null) {
       }
 
       window._billingRooms = billRooms;
+      await syncBillingMetersFromServer();
       const savedMeters = getSavedBillingMeters();
       const firstId = window._selectedBillingRoomId && billRooms.some(r => String(r.id) === String(window._selectedBillingRoomId))
         ? window._selectedBillingRoomId
@@ -2937,13 +2963,20 @@ async function openMyAppointmentsModal() {
         : `<span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">⏳ Đang chờ chủ trọ xác nhận</span>`;
 
       return `
-        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
-          <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-            ${badge}
-            <span class="font-bold text-slate-700"><i class="fa-regular fa-clock mr-1"></i>${a.appointmentDate} • ${a.appointmentTime}</span>
+        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div>
+            <div class="flex flex-wrap items-center gap-2 mb-1.5">
+              ${badge}
+              <span class="font-bold text-slate-700"><i class="fa-regular fa-clock mr-1"></i>${a.appointmentDate} • ${a.appointmentTime}</span>
+            </div>
+            <div class="font-bold text-blue-700 text-sm">${a.roomTitle}</div>
+            ${a.note ? `<div class="text-slate-500 italic mt-1">Ghi chú: "${a.note}"</div>` : ""}
           </div>
-          <div class="font-bold text-blue-700 text-sm">${a.roomTitle}</div>
-          ${a.note ? `<div class="text-slate-500 italic mt-1">Ghi chú: "${a.note}"</div>` : ""}
+          ${a.status !== "cancelled" ? `
+            <button onclick="cancelMyAppointment('${a._id}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs shrink-0 transition">
+              ❌ Hủy lịch hẹn
+            </button>
+          ` : ""}
         </div>
       `;
     }).join("");
@@ -3517,11 +3550,38 @@ function applyRoommateMatch(e) {
   showToast(`🤝 Tìm thấy ${matched.length} phòng phù hợp ở ghép (mỗi người ≤ ${(budgetPerPerson/1000000).toFixed(1)}tr)!`, "success");
 }
 
-// 3. ĐĂNG KÝ NHẬN BÁO KHI CÓ PHÒNG TRỐNG (WAITLIST CHO NGƯỜI LAO ĐỘNG & SV)
+async function cancelMyAppointment(apptId) {
+  if (!confirm("Bạn có chắc chắn muốn hủy lịch hẹn xem phòng này không?")) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/appointments/${apptId}/cancel`, {
+      method: "PATCH",
+      headers: getAuthHeaders()
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      showToast(`❌ ${data.message || "Không thể hủy lịch hẹn!"}`, "info");
+      return;
+    }
+    showToast("✅ Đã hủy lịch hẹn thành công!", "success");
+    const modal = document.getElementById("my-appointments-modal");
+    if (modal && !modal.classList.contains("hidden")) openMyAppointmentsModal();
+    const tenantModal = document.getElementById("tenant-page-modal");
+    if (tenantModal && !tenantModal.classList.contains("hidden")) loadTenantSection("appointments");
+  } catch (err) {
+    showToast("❌ Lỗi kết nối máy chủ khi hủy lịch hẹn!", "info");
+  }
+}
+
+// 3. ĐĂNG KÝ NHẬN BÁO KHI CÓ PHÒNG TRỐNG (WAITLIST — KHÔNG BÁO THÀNH CÔNG ẢO)
 async function submitWaitlistAlert(roomId) {
   const phone = document.getElementById("waitlist-phone-input")?.value.trim() || "";
   if (!/^[0-9]{10}$/.test(phone)) {
     showToast("⚠️ Vui lòng nhập đúng số điện thoại 10 chữ số!", "info");
+    return;
+  }
+
+  if (!isBackendOnline || !roomId || String(roomId).length !== 24) {
+    showToast("❌ Không kết nối được Backend NestJS để lưu đăng ký chờ phòng!", "info");
     return;
   }
 
@@ -3537,51 +3597,79 @@ async function submitWaitlistAlert(roomId) {
     isWaitlist: true
   };
 
-  if (isBackendOnline && String(roomId).length === 24) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/appointments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        showToast("🔔 Đã lưu SĐT vào danh sách chờ MongoDB! Chủ trọ sẽ báo bạn ngay khi có phòng trống.", "success");
-        return;
-      }
-    } catch (err) {
-      console.error(err);
+  try {
+    const res = await fetch(`${API_BASE_URL}/appointments`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = Array.isArray(data.message) ? data.message[0] : data.message;
+      showToast(`❌ ${msg || "Không thể đăng ký chờ phòng trống!"}`, "info");
+      return;
     }
+    showToast("🔔 Đã lưu SĐT vào danh sách chờ MongoDB! Chủ trọ sẽ báo bạn ngay khi có phòng trống.", "success");
+  } catch (err) {
+    console.error(err);
+    showToast("❌ Lỗi kết nối máy chủ — đăng ký chờ phòng chưa được lưu!", "info");
   }
-  showToast("🔔 Đã đăng ký nhận thông báo khi có phòng trống!", "success");
 }
 
 // 4. TÍNH HÓA ĐƠN ĐIỆN NƯỚC HÀNG THÁNG + MỨC TIÊU THỤ + XUẤT EXCEL (.xlsx) + VIETQR
 let lastGeneratedBillText = "";
 let lastGeneratedBillData = null;
 
-function getSavedBillingMeters() {
+let _serverBillingCache = {};
+let _billingSaveTimer = null;
+
+async function syncBillingMetersFromServer() {
+  if (!isBackendOnline || !authToken || !canManageRooms()) return _serverBillingCache;
   try {
-    return JSON.parse(localStorage.getItem("svtro_billing_meters") || "{}");
-  } catch {
-    return {};
+    const res = await fetch(`${API_BASE_URL}/billing`, { headers: getAuthHeaders() });
+    if (res.ok) {
+      const list = await res.json();
+      const map = {};
+      (list || []).forEach(b => {
+        const rid = String(b.roomId);
+        map[rid] = {
+          tenantName: b.tenantName || "",
+          tenantPhone: b.tenantPhone || "",
+          dueDate: b.dueDate || "",
+          paymentStatus: b.paymentStatus || "unpaid",
+          elecOld: Number(b.elecOld) || 0,
+          elecNew: Number(b.elecNew) || 0,
+          people: Number(b.people) || 1,
+          extra: Number(b.extra) || 0,
+          bank: b.bank || "MB",
+          account: b.account || ""
+        };
+      });
+      _serverBillingCache = map;
+    }
+  } catch (err) {
+    console.warn("Không tải được dữ liệu hóa đơn từ MongoDB:", err);
   }
+  return _serverBillingCache;
 }
 
-function getDefaultBillingMeter(room, index = 0) {
-  const now = new Date();
-  // Phòng đầu tiên mặc định quá hạn 9 ngày để chủ trọ thấy rõ cảnh báo > 1 tuần
-  const due = new Date(now);
-  if (index === 0) due.setDate(now.getDate() - 9);
-  else due.setDate(now.getDate() + 3);
+function getSavedBillingMeters() {
+  return _serverBillingCache;
+}
+
+// Không tạo dữ liệu mẫu giả / không tự gán quá hạn khi chưa có bản ghi thật trong MongoDB
+function getDefaultBillingMeter() {
   return {
-    elecOld: 1200,
-    elecNew: 1200 + (room?.estimatedKwh || 80),
-    people: 2,
-    extra: 100000,
-    tenantName: index === 0 ? "Nguyễn Minh Quân" : "",
-    tenantPhone: index === 0 ? "0914222333" : "",
-    dueDate: due.toISOString().split("T")[0],
-    paymentStatus: index === 1 ? "paid" : "unpaid"
+    elecOld: 0,
+    elecNew: 0,
+    people: 1,
+    extra: 0,
+    tenantName: "",
+    tenantPhone: "",
+    dueDate: "",
+    paymentStatus: "unpaid",
+    bank: "MB",
+    account: currentUser?.phone || ""
   };
 }
 
@@ -3645,10 +3733,33 @@ function filterBillingRoomsByStatus(mode, btnEl) {
   });
 }
 
-function saveBillingMeter(roomId, data) {
-  const all = getSavedBillingMeters();
-  all[String(roomId)] = data;
-  localStorage.setItem("svtro_billing_meters", JSON.stringify(all));
+function saveBillingMeter(roomId, data, immediate = false) {
+  _serverBillingCache[String(roomId)] = { ...data };
+  if (!isBackendOnline || !authToken || String(roomId).length !== 24) return;
+
+  const persist = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/billing/${roomId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(`❌ Không lưu được hóa đơn lên MongoDB: ${err.message || ""}`, "info");
+      }
+    } catch (err) {
+      console.error("Lỗi lưu hóa đơn MongoDB:", err);
+    }
+  };
+
+  if (immediate) {
+    if (_billingSaveTimer) clearTimeout(_billingSaveTimer);
+    persist();
+  } else {
+    if (_billingSaveTimer) clearTimeout(_billingSaveTimer);
+    _billingSaveTimer = setTimeout(persist, 450);
+  }
 }
 
 function selectBillingRoom(roomId) {
@@ -3681,14 +3792,18 @@ function selectBillingRoom(roomId) {
   const eNew = document.getElementById("bill-elec-new");
   const ppl = document.getElementById("bill-people");
   const ext = document.getElementById("bill-extra");
+  const bankEl = document.getElementById("bill-bank");
+  const accEl = document.getElementById("bill-account");
   if (tName) tName.value = saved.tenantName || "";
   if (tPhone) tPhone.value = saved.tenantPhone || "";
-  if (dueEl) dueEl.value = saved.dueDate || new Date().toISOString().split("T")[0];
+  if (dueEl) dueEl.value = saved.dueDate || "";
   if (payEl) payEl.value = saved.paymentStatus || "unpaid";
-  if (eOld) eOld.value = saved.elecOld ?? 1200;
-  if (eNew) eNew.value = saved.elecNew ?? (1200 + (room.estimatedKwh || 80));
-  if (ppl) ppl.value = saved.people ?? 2;
-  if (ext) ext.value = saved.extra ?? 100000;
+  if (eOld) eOld.value = saved.elecOld ?? 0;
+  if (eNew) eNew.value = saved.elecNew ?? 0;
+  if (ppl) ppl.value = saved.people ?? 1;
+  if (ext) ext.value = saved.extra ?? 0;
+  if (bankEl && saved.bank) bankEl.value = saved.bank;
+  if (accEl && saved.account !== undefined) accEl.value = saved.account || currentUser?.phone || "";
 
   recalcBillingReceipt();
 }
@@ -3702,7 +3817,7 @@ function recalcBillingReceipt(shouldRefreshList = false) {
 
   const tenantName = document.getElementById("bill-tenant-name")?.value.trim() || "Khách thuê phòng";
   const tenantPhone = document.getElementById("bill-tenant-phone")?.value.trim() || "";
-  const dueDate = document.getElementById("bill-due-date")?.value || new Date().toISOString().split("T")[0];
+  const dueDate = document.getElementById("bill-due-date")?.value || "";
   const paymentStatus = document.getElementById("bill-pay-status")?.value || "unpaid";
   const elecOld = parseInt(document.getElementById("bill-elec-old")?.value || "0", 10);
   const elecNew = parseInt(document.getElementById("bill-elec-new")?.value || "0", 10);
@@ -3710,7 +3825,7 @@ function recalcBillingReceipt(shouldRefreshList = false) {
   const people = Math.max(1, parseInt(document.getElementById("bill-people")?.value || "1", 10));
   const extra = Math.max(0, parseInt(document.getElementById("bill-extra")?.value || "0", 10));
   const bank = document.getElementById("bill-bank")?.value || "MB";
-  const account = document.getElementById("bill-account")?.value.trim() || "0905123456";
+  const account = document.getElementById("bill-account")?.value.trim() || "";
 
   const meterObj = {
     tenantName: tenantName === "Khách thuê phòng" ? "" : tenantName,
@@ -3720,9 +3835,11 @@ function recalcBillingReceipt(shouldRefreshList = false) {
     elecOld,
     elecNew,
     people,
-    extra
+    extra,
+    bank,
+    account
   };
-  saveBillingMeter(room.id, meterObj);
+  saveBillingMeter(room.id, meterObj, shouldRefreshList);
 
   const overdueInfo = getBillingOverdueInfo(meterObj);
   if (shouldRefreshList) {
@@ -5937,13 +6054,15 @@ async function loadNotifications() {
     if (currentUser && authToken) {
       const role = currentUser.role;
 
-      // 2a. Tin nhắn khách thuê & Cảnh báo quá hạn thanh toán > 1 tuần (Chủ trọ / Admin)
+      // 2a. Tin nhắn khách thuê & Cảnh báo quá hạn thanh toán > 1 tuần (Chủ trọ / Admin — đọc từ MongoDB)
       if (role === "landlord" || role === "admin") {
-        // Kiểm tra phòng quá hạn thanh toán > 7 ngày
+        // Kiểm tra phòng quá hạn thanh toán > 7 ngày từ dữ liệu thật MongoDB
+        await syncBillingMetersFromServer();
         const savedMeters = getSavedBillingMeters();
         const myBillRooms = rooms.filter(r => role === "admin" || (r.landlordId && String(r.landlordId) === String(currentUser.id)));
-        myBillRooms.forEach((r, idx) => {
-          const m = savedMeters[String(r.id)] || getDefaultBillingMeter(r, idx);
+        myBillRooms.forEach((r) => {
+          const m = savedMeters[String(r.id)];
+          if (!m) return; // Chưa có bản ghi thật -> không báo quá hạn ảo
           const info = getBillingOverdueInfo(m);
           if (info.state === "overdue-week") {
             items.push({
@@ -6253,9 +6372,14 @@ async function loadTenantSection(section = "appointments") {
                   <div class="font-extrabold text-blue-700 text-sm">${a.roomTitle}</div>
                   ${a.note ? `<div class="text-[11px] text-slate-500 italic mt-0.5">Ghi chú: "${a.note}"</div>` : ""}
                 </div>
-                ${a.roomId ? `
-                  <button onclick="openRoomModal('${a.roomId}')" class="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs shrink-0">👁️ Xem lại phòng</button>
-                ` : ""}
+                <div class="flex items-center gap-2 shrink-0">
+                  ${a.roomId ? `
+                    <button onclick="openRoomModal('${a.roomId}')" class="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs">👁️ Xem lại phòng</button>
+                  ` : ""}
+                  ${a.status !== "cancelled" ? `
+                    <button onclick="cancelMyAppointment('${a._id}')" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs">❌ Hủy lịch</button>
+                  ` : ""}
+                </div>
               </div>
             `;
           }).join("")}

@@ -8,6 +8,12 @@ export class Review {
   @Prop({ type: Types.ObjectId, ref: 'Room', required: true })
   roomId: Types.ObjectId;
 
+  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
+  authorId?: Types.ObjectId;
+
+  @Prop({ default: '' })
+  authorEmail?: string;
+
   @Prop({ required: true })
   authorName: string;
 

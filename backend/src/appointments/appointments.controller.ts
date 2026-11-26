@@ -46,6 +46,18 @@ export class AppointmentsController {
     return this.appointmentsService.findAll();
   }
 
+  @Patch(':id/cancel')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '[Người thuê] Tự hủy lịch hẹn xem phòng của chính mình' })
+  cancelMyAppointment(
+    @Param('id') id: string,
+    @CurrentUser('email') email: string,
+    @CurrentUser('role') role: string,
+  ) {
+    return this.appointmentsService.cancelMyAppointment(id, email, role);
+  }
+
   @Patch(':id/status')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
